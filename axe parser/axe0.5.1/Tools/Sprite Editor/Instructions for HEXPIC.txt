@@ -1,0 +1,13 @@
+This is a BASIC program.  Just run it like any other BASIC program.
+
+Arrows  - Move the cursor around
+[2nd]   - Invert a pixel
+[ENTER] - Save to Str1
+[L]     - Loads Str1
+[I]     - Invert all the pixels
+[CLEAR] - Exit
+
+After generating hex code, edit your Axe Parser program and find
+the place you want to insert the sprite.  Do [2ND][RCL][2ND][ANS]
+and the string should be inserted at that location.  Then, just
+delete the quotation marks.

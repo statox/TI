@@ -1,0 +1,95 @@
+UNCLE WORM v1.1                                                2 December 1999
+===============
+for Ion on the TI-83/TI-83+
+
+by badja
+http://move.to/badja
+badja@alphalink.com.au
+
+
+How to Run
+==========
+Uncle Worm requires Ion to run.
+
+To run Uncle Worm, make sure Ion is installed on your calculator. Send either
+UNCLEWRM.83P or UNCLEWRM.8XP (for the 83 and 83+ respectively) to your
+calculator and start Ion. Now you can run Uncle Worm.
+
+
+About
+=====
+Uncle Worm is a snake-type game with a difference. Unlike Nibbles, where you
+can travel in four directions only, Uncle Worm can travel in no less than
+thirty-two directions.
+
+
+How to Play
+===========
+At the title screen, use the UP and DOWN arrow keys to select the game speed,
+then press 2ND. Select the slow speed to start with. A different high score is
+recorded for each game speed.
+
+Next, you will see Uncle Worm travelling upward from the bottom of the screen.
+If he hits the edge of the screen, he'll die and the game will be over. So
+before he hits the top, steer him out of trouble using the LEFT and RIGHT
+arrow keys. Uncle Worm will also die if he crashes into himself, but right now
+he's too short for that to happen. The longer you hold down LEFT or RIGHT, the
+more Uncle Worm will turn.
+
+Somewhere on the screen there will be an apple (a black circle). Steer Uncle
+Worm into this apple and he'll eat it. Another apple will appear somewhere
+else, and Uncle Worm will grow in length. The bigger the apple, the more he'll
+grow.
+
+After eating ten apples, a gap will appear at the top of the screen. You must
+guide Uncle Worm through this gap to complete the level. On the next level the
+playing area will be smaller.
+
+
+Scoring
+=======
+Eat apple  4 to 8 points
+           (dependent on size)
+
+Win level  16 points for level 1
+           32 points for level 2
+           48 points for level 3
+           ...etc...
+
+
+Summary of Keys
+===============
+
+Title screen:
+------------------------------------------------
+Up/Down     Select speed
+2nd         Start game
+CLEAR       Exit game
+0           Delete high score for selected speed
+
+In game:
+-------------------------------------------------------------
+Left/Right  Steer Uncle Worm
+MODE        Pause game
+2nd         Continue after winning level, crashing or pausing
+CLEAR       End game
+
+
+Version History
+===============
+New in version 1.1
+- Cannot be turned off and won't power down at end of a level, after crashing or
+  when paused. This caused the game to crash
+- The 2ND key is now used in place of ENTER and to resume a paused game
+- Fixed a rarely-occuring bug which caused an apple to occasionally appear on
+  Uncle Worm's head
+- Fixed another rarely-occuring bug which caused a one-pixel gap to occasionally
+  appear in the worm
+- Game won't crash when calculator is in split screen mode
+- Uncle Worm's head now hits top of screen when entering the gap at the end of a
+  level
+- 4 bytes smaller
+
+
+
+Send any comments, ideas, or other feedback to badja@alphalink.com.au

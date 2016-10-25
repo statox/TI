@@ -1,0 +1,151 @@
+Program:	Super Mario v1.2
+Author:		Sam Heald (evil_sam@hotmail.com)
+Graphics:       Bill Nagel
+Version:	1.2
+System:		TI-83 (+) ION (or MirageOS)
+Released:	06-28-01
+
+I. Description/Objective:
+	For those of you who have lived in a hole for the past decade or so, Mario has been
+and will always be the official mascot of Nintendo. He has appeared in countless titles over
+the years in genres ranging from RPGs, Puzzle, Party, Racing, and Education. However, Mario
+will forever be a platform character. Starting on the original NES, Mario has evolved as a
+platform character across the Gameboy, SNES, Nintendo 64, and most recently the Gameboy
+Advance. His look has changed along the way, shifting from 2-D to 3-D, and he has gained
+some friends and family helpers along the way (Yoshi, Luigi, Toad, etc.). However, the 
+enjoyable premise of all these games has been the same. Mario runs through levels, collecting
+coins, stomping goombas, striving to reach his final destination. Mario has never been a
+game about high scores or a deep storyline, just good ol' family fun.
+	This TI rendition of Mario remains true to the original roots: Fast 2-D scrolling
+gameplay with all the coins, enemies, and fun. The graphics and general concepts have been
+recreated from Bill Nagel's Mario 86. When Bill first released Mario 86, I was thoroughly
+impressed by it. Still somewhat of a novice z80 programmer, I asked him if I could port it
+to my trusty TI-82. He told me that Mario was too advanced a game, I was too inferior a
+programmer, and if it would be done at all, it would be done by him. Well, it was never
+done by him. 
+	I hope you enjoy my rendition of Mario. Nagel's graphics have been recreated as well
+has the external level "Nagel.82p", but absolutely no program code has been shared between
+the two programs. My version adds the use of fireballs, as well as not having some of the bugs
+that his had (255 coin, dungeon fire, etc.).This program utilizes external levels (one by
+Bill Nagel) is included.. A full-featured level editor with password protection is also
+included. Information on how to use the editor is located in medit.txt.
+
+II. Included Files
+ 	MARIO.8xp    - Generic Mario Program
+	MEDIT.8xp    - On-Calc Level Editor (please consult medit.txt)
+	NAGEL.8xp    - An External Level by Bill Nagel
+	MARIO.TXT    - This File
+	MEDIT.TXT    - Editor Help File
+
+ If you using an 83, send the .83p files!
+
+III. INSTALLATION:
+1) Make sure you have ION installed on your TI-83 (+)
+	*IONcan be downloaded from http://www.ticalc.org
+
+2) Send Mario program to your TI-83, followed by any external levels.
+
+3) Run A, then select "Super Mario 82 v1.1" and hit enter
+
+4) If it says, "No Levels Found", then you need to send an external level to the TI-82.
+   If it says, "No Levels Found" and there are levels, then resend them AFTER mario.82p
+
+5) Select a level from the menu.
+
+*External levels should be sent to the calculator AFTER mario.8xp!
+
+IV. CONTROLS (Game):  (consult medit.txt for editor controls)
+Left Arrow    = Move Left
+Right Arrow   = Move Right
+2nd           = Jump
+Alpha         = Shoot Fireball (only when Flower Power'ed!)
+Mode          = Pause (Shuts Down Calculator until ON pressed)
+Clear         = Exit
+
+V. VERSION HISTORY:
+ v0.9 Beta
+	*Few little bugs remaining (see below)
+	*Music blocks (the bouncy blocks) aren't really enabled yet
+	*Need to improve the ending
+	*Fireballs not enabled
+
+ v1.0
+	*Fixed Random Coin Bounce bug
+	*Fixed Random Enemy Switching Directions bug
+	*Fixed End-Game crashing bug
+	*Fixed Coin No Collect bug
+	*Fixed improper scrolling bug
+	*Fixed Projectile Enemy Reappearing bug
+	*Fixed Projectile Wrong Direction bug
+	*Fixed 2nd/Enter confusion in menus (either will work)
+	*Fixed "*" block bug
+	*Fixed Random Crashing problem (collision detection routines...)
+	*Fixed slanted tile bug
+	*Fixed animated block bug
+	*Fixed minor bug in level detection (in the editor)
+	*Allowed Exiting Level Editor during Level Creation
+	*Improved Bowser AI
+	*Altered Compression algorythm (added 15% to compression)
+	*Added the ending sequence from Mario 86
+	*Added Fireballs (White Mario)
+	*Optimized a bit (850 bytes)
+	*Included a joint Mario/Editor Program
+	*Updated Nagel.82p with altered 
+	*No Source Code (will be released separately at a later time)
+	*SIZES:  9950 bytes (MARIO.82p)
+		 6615 bytes (MEDIT.82p)
+	 	13949 bytes (MARIO2.82p)
+		 2051 bytes (NAGEL.82p)
+
+ v1.1
+	*Fixed Display Routine to work on ALL TI-82's
+	*Fixed choose block / enemy display bug in Mario2.82p
+	*Flower Mario nows becomes Big Mario after being hit
+	*Fixed Shell enemy bug (if placed as just a shell)
+	*Fixed bug in level detection display
+	*Switched Pound AI to return to original Y position, not first hit position.
+	*Ported to 83/83+ ION
+	*SIZES:  9975 bytes (MARIO.82p)
+		 6615 bytes (MEDIT.82p)
+		13975 bytes (MARIO2.82p)
+		 2051 bytes (NAGEL.82p)	
+
+ v1.1
+	*Added archived level support!
+
+ v1.2 
+	*Fixed bug in level editor
+	*Level editor auto-quits if level is archived.
+
+VI. THANK YOU:
+      Rusty Wagner  - CalcGS and VTI (very good ASM development tools)
+	Jimmy Mardell - His ASCR routines (taught me a lot)
+      Bill Nagel    - His graphics and levels
+      Hideaki Omuro - His scrolling and sprclp routines, CrASH
+	Kirk Meyer    - Suggestion helped with one of the bugs, being cool
+	Harper Maddox - Inspired new compression algorythm
+	Kouri Rosenberg - Beta-Testing
+	Andy Poes     - Constantly asking "what are you doing now?"	
+
+Special Thank you: To all my fans, who have put up with all of the delays on all of my
+		projects. I haven't forgotten you!
+
+VII. Known Bugs
+	*The speed of the game is not perfectly constant (varies with # of enemies)
+
+VIII. Future Versions (if there are any)
+	*Optimize further (the editor could use work, but the game is pretty much done)
+	*Sound? (it was cool in Nagel's version)
+	*Suggestions? 
+
+IX. Contact Information For Bug Reports, Suggestions, and General Comments
+	Sam Heald
+	evil_sam@hotmail.com
+	http://void.calc.org
+
+*NOTE: Please No Port Requests!!!
+
+DO NOT SEPARATE THIS DOCUMENT FROM SUPER MARIO 82,83, 83+
+
+Copyright (C) 2000-2001 Sam Heald
+Copyright (C) 2001 Void Productions

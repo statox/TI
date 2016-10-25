@@ -1,0 +1,83 @@
+======================================================
+BallRace3D                                        v0.1
+======================================================
+(C)2000-2001 by Flavien Racine
+FlashZ@netcourrier.com
+http://www.flashz.fr.st/
+======================================================
+
+About :
+
+This game is programmed for TI-89 and TI-92+.
+You must scroll trough the level, jumping on the floor
+on a 3D road.
+This is like the game called PlainJump on the other
+TI calculators, or Babal on HP calculators.
+
+It has been written fully in C language, it's my FIRST
+C program.
+
+It is compiled in NOSTUB.
+No kernel or external libraries is required.
+
+======================================================
+
+Controls :
+
+[TI-89]
+    [2nd]            -  Jump
+    
+[TI-92+]
+    [LOCK]           -  Jump
+
+[TI-89/TI-92+]
+    Direction pad:
+     Left            -  Move Left
+     Right           -  Move right
+     Up              -  Accelerate
+     Down            -  Break
+    
+    [ESC]            -  ?? Exit
+    [APPS]           -  Turns OFF the calculator
+
+    [+]/[-]          -  Change contrast
+
+======================================================
+
+History :
+
+v0.1 :
+------
+    July 15, 2001 - First beta, demo version
+                      Only one level
+                      No level editor :(
+                      No external level
+                      A GrayScale game, change the
+                       color in the options menu
+                      You can change the camera in
+                       the options menu
+                      Next releases will include an
+                       internal level editor, a
+                       hiscores table, a better 3D,
+                       external levels, a higher
+                       speed, etc...
+
+======================================================
+
+Thanks :
+
+ - Bill-Bob
+ - Blue-Z
+ - frekazoid
+ - JM
+ - Pollux
+ - eXor
+ - Dolstouf
+ - Thomas Nussbaumer
+ - Marcos Lopez
+ - Rusty Wagner
+ - The TI-fr team
+ - Christian Mauduit (U-Foot) for the HP version
+ - All the TI-GCC team
+
+======================================================

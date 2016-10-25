@@ -1,0 +1,1069 @@
+;************************************************************
+;
+; Uncle Worm v1.1
+; ===============
+; for Ion on the TI-83/TI-83+
+;
+; by badja <badja@alphalink.com.au>
+; 2 December 1999
+;
+; You may modify this source code for personal use only.
+; You may NOT distribute the modified source or program file.
+;
+;************************************************************
+
+.NOLIST
+#include "ion.txt"
+.LIST
+
+;******** Symbolic constants ********
+trgSz	.equ	81		; #bytes used to store trigonometric precalcs
+OPblk	.equ	op1		; beginning of OPx block
+initX	.equ	47		; initial x-position
+initY	.equ	63		; initial y-position
+initA	.equ	24		; initial angle
+iniL1	.equ	$00		; initial length (most-significant byte)
+iniL2	.equ	$30		; initial length (least-significant byte)
+initD	.equ	$20		; game-loop delay (MSB), #cycles = 34 + 29 * (delay - 1)
+apl	.equ	10		; number of apples per level
+sdel	.equ	$8000		; duration of short pauses
+
+
+;******** saferam3 IX offsets ********
+trig	.equ	0		; beginning of trig precalcs array (9 9-byte FP nums)
+angle	.equ	trig+trgSz	; worm's current angle (ranges from 0 to 31)
+long	.equ	angle+1	; worm's current length
+oldYX	.equ	long+2	; previous coordinates for head of worm (Y,X)
+newYX	.equ	oldYX+2	; current coordinates for head of worm (Y,X)
+appYX	.equ	newYX+2	; coordinates of current apple (Y,X)
+appSz	.equ	appYX+2	; size of apple
+temp	.equ	appSz+1	; two temporary bytes
+count	.equ	temp+2	; countdown for when worm grows
+aLeft	.equ	count+1	; number of apples left to get on current level
+level	.equ	aLeft+1	; current level
+lWall	.equ	level+1	; X-position of left wall
+rWall	.equ	lWall+1	; X-position of right wall
+delay	.equ	rWall+1	; current game-loop delay (MSB)
+score	.equ	delay+1	; current score
+speed	.equ	score+2	; game speed
+split	.equ	speed+1	; split screen on
+
+
+;******** Program ********
+
+#ifdef TI83P			
+	.org	progstart-2	
+	.db	$BB,$6D		
+#else				
+	.org	progstart	
+#endif
+	ret
+	jr	nc,start	
+	.db	"Uncle Worm 1.1",0
+
+start:
+	ld	ix,saferam3			; initialise IX so we can use our offsets
+	bit	grfSplit,(iy+SGRFLAGS)	; check if split screen is on
+	jr	z,notSplit
+	res	grfSplit,(iy+SGRFLAGS)	; if so, turn it off
+	ld	(ix+split),1
+notSplit:
+	ld	(ix+speed),1	; initialise speed
+restart:
+	bcall(_GRBUFCLR)		; clear the graph buffer
+	ld	de,PLOTSSCREEN	; display heading picture
+	ld	hl,heading
+	ld	bc,16*12
+	ldir
+
+	xor	a			; display worm picture
+	ld	l,32
+	ld	bc,$2005
+	push	ix
+	ld	ix,wormPic
+	call	ionLargeSprite
+	pop	ix
+
+	bcall(_GRBUFCPY)		; copy the graph buffer to the screen
+
+	ld	hl,url		; display URL
+	ld	bc,17*256+11
+	call	printSmall
+
+	ld	hl,press0		; display press 0 message
+	ld	bc,24*256+3
+	call	printSmall
+
+	ld	hl,highScore	; display high score text
+	ld	bc,58*256+46
+	call	printSmall
+
+showMenu:
+	ld	hl,slow		; display slow menu item
+	ld	bc,33*256+58
+	ld	a,(ix+speed)	; check if slow should be highlighted
+	cp	2
+	jr	nz,showSlow
+	set	textinverse,(iy+textflags)
+showSlow:
+	call	printSmall
+	res	textinverse,(iy+textflags)
+
+	ld	hl,medium		; display medium menu item
+	ld	bc,41*256+58
+	ld	a,(ix+speed)
+	cp	1
+	jr	nz,showMedium
+	set	textinverse,(iy+textflags)
+showMedium:
+	call	printSmall
+	res	textinverse,(iy+textflags)
+
+	ld	hl,fast		; display fast menu item
+	ld	bc,49*256+58
+	ld	a,(ix+speed)
+	cp	0
+	jr	nz,showFast
+	set	textinverse,(iy+textflags)
+showFast:
+	call	printSmall
+	res	textinverse,(iy+textflags)
+
+	call	getHSloc		; put location of high score for selected speed in HL
+	ex	de,hl			; load the high score into HL
+	ld	a,(de)
+	ld	l,a
+	inc	de
+	ld	a,(de)
+	ld	h,a
+	bcall(_SETXXXXOP2)	; display the high score
+	bcall(_OP2TOOP1)
+	ld	bc,58*256+83
+	ld	(PENCOL),bc
+	ld	a,3
+	push	ix
+	bcall(_DISPOP1A)
+	pop	ix
+	ld	hl,spaces		; erase remnants of previous high score
+	bcall(_vputs)
+
+	call	shortDelay		; pause to let user let go of arrow key
+menuKey:
+	ld	b,$fe
+	call	getKeyData
+	cp	254			; check if down is pressed
+	jp	z,down
+	cp	247			; check if up is pressed
+	jp	z,up
+	ld	b,$fd
+	call	getKeyData
+	cp	191			; check if CLEAR is pressed
+	jp	z,quit
+	ld	b,$ef
+	call	getKeyData
+	cp	254			; check if 0 is pressed
+	jp	z,clearHS
+	ld	b,$bf
+	call	getKeyData
+	cp	223			; check if 2nd is pressed
+	jr	z,startGame
+	jr	menuKey
+
+startGame:
+	ld	a,(ix+speed)	; multiply speed by 16 to get MSB of delay
+	sla	a
+	sla	a
+	sla	a
+	sla	a
+	ld	(ix+delay),a
+
+	ld	(ix+level),0	; initialise level
+	ld	(ix+lWall),0	; initialise left and right boundaries
+	ld	(ix+rWall),95
+	ld	hl,0			; initialise score
+	ld	(saferam3+score),hl
+
+startLevel:
+	call	precalcs
+	bcall(_GRBUFCLR)		; clear the graph buffer
+	ld	(ix+angle),initA	; initialise angle
+	ld	(ix+count),0	; initialise countdown
+	ld	(ix+aLeft),apl	; initialise number of apples left
+	ld	b,iniL1		; initialise length
+	ld	c,iniL2
+	ld	(ix+long),c
+	ld	(ix+long+1),b
+
+	ld	de,saferam1		; start clearing coordinate queue
+initQ:
+	ld	a,1			; load 1 into (DE)	; used to be -1 (silly idea)
+	ld	(de),a
+	inc	de			; move to next byte
+	dec	bc
+	ld	a,b			; loop back if BC is not 0
+	or	c
+	jr	nz,initQ
+
+	ld	de,PLOTSSCREEN		; make DE and HL point to start of horizontal
+	ld	hl,PLOTSSCREEN+(63*12)	; lines (on the graph buffer)
+	ld	b,0
+	ld	c,(ix+level)
+	add	hl,bc
+	ex	de,hl
+	add	hl,bc
+	ld	a,12				; make B equal the number of bytes to write to the
+	sla	c				; graph buffer
+	sub	c
+	ld	b,a
+	ld	a,%11111111			; draw the horizontal lines
+lineH:
+	ld	(de),a
+	inc	de
+	ld	(hl),a
+	inc	hl
+	djnz	lineH
+
+	ld	a,%10000000			; draw the left vertical line
+	ld	hl,PLOTSSCREEN+12
+	ld	b,0
+	ld	c,(ix+level)
+	add	hl,bc
+	call	vertLine
+
+	ld	a,%00000001			; draw the right vertical line
+	ld	hl,PLOTSSCREEN+23
+	ld	b,0
+	ld	c,(ix+level)
+	sbc	hl,bc				; carry bit already cleared
+	call	vertLine
+
+	ld	a,initX		; initialise x-position into OP5
+	bcall(_SETXXOP1)
+	bcall(_OP1TOOP5)
+	ld	a,initY		; initialise y-position into OP6
+	bcall(_SETXXOP1)
+	bcall(_OP1TOOP6)
+
+	call	putApple		; generate the first apple
+
+game:
+	ld	b,$fe
+	call	getKeyData
+	cp	253			; check if left is pressed
+	call	z,left
+	cp	251			; check if right is pressed
+	call	z,right
+	ld	b,$fd
+	call	getKeyData
+	cp	191			; check if CLEAR is pressed
+	jp	z,endGame
+	ld	b,$bf
+	call	getKeyData
+	cp	191			; check if MODE is pressed
+	call	z,press2nd
+
+	bit	4,(ix+angle)	; branch if angle < 16
+	jr	z,bit3
+	bit	3,(ix+angle)	; branch if angle < 24
+	jr	z,quad3
+quad4:				; angle is in 4th quadrant
+	ld	a,(ix+angle)	; cos(angle) = sin(angle - 24)
+	sub	24
+	ld	b,a			; put result (index for dx) into b
+	ld	a,32			; sin(angle) = -sin(32 - angle)
+	sub	(ix+angle)
+	ld	c,a			; put result (index for dy) into c
+	ld	d,$01			; 0: dx is positive, 1: dy is negative
+	jr	lookup		; B and C now contain indices for the precalc array
+quad3:
+	ld	a,24			; cos(angle) = -sin(24 - angle)
+	sub	(ix+angle)
+	ld	b,a
+	ld	a,(ix+angle)	; sin(angle) = -sin(angle - 16)
+	sub	16
+	ld	c,a
+	ld	d,$11
+	jr	lookup
+bit3:
+	ld	a,(ix+angle)	; branch if angle < 8
+	bit	3,a
+	jr	z,quad1
+	cp	8			; branch if angle = 8
+	jr	z,quad1
+quad2:
+	ld	a,(ix+angle)	; cos(angle) = -sin(angle - 8)
+	sub	8
+	ld	b,a
+	ld	a,16			; sin(angle) = sin(16 - angle)
+	sub	(ix+angle)
+	ld	c,a
+	ld	d,$10
+	jr	lookup
+quad1:
+	ld	c,(ix+angle)	; sin(angle) = sin(angle)
+	ld	a,8			; cos(angle) = sin(8 - angle)
+	sub	c
+	ld	b,a
+	ld	d,$00
+
+lookup:
+	push	bc
+	call	doLookup
+	bit	4,d			; check if dx was positive or negative
+	push	de
+	jr	z,plus1
+	bcall(_INVOP1S)		; invert OP1 if dx was negative
+plus1:
+	bcall(_OP5TOOP2)		; put x-position in OP2
+	bcall(_FPADD)		; add dx to it
+	bcall(_OP1TOOP5)		; put result back in OP5
+	pop	de
+	pop	bc
+	ld	b,c
+	call	doLookup
+	bit	0,d
+	jr	z,plus2
+	bcall(_INVOP1S)
+plus2:
+	bcall(_OP6TOOP2)
+	bcall(_FPADD)
+	bcall(_OP1TOOP6)
+
+	ld	a,(ix+count)	; check if worm is still growing
+	cp	0
+	jr	nz,grow		; if so, jump to the grow code
+
+	ld	de,(saferam1)	; load coordinate of tip of tail into A and E
+	ld	a,d
+	call	ionGetPixel		; make HL point to byte in graph buffer and A = bit mask
+	cpl				; invert all bits in A
+	and	(hl)			; AND the byte with the inverted mask
+	ld	(hl),a		; to erase the point
+	ld	de,saferam1		; shift array of coordinates
+	ld	hl,saferam1+2
+	ld	c,(ix+long)
+	ld	b,(ix+long+1)
+	dec	bc
+	dec	bc
+	ldir
+	jr	intPoint
+
+grow:
+	ld	c,(ix+long)		; make DE point to after coordinate list
+	ld	b,(ix+long+1)
+	ld	hl,saferam1
+	add	hl,bc
+	ex	de,hl
+	inc	bc			; increase worm length
+	inc	bc
+	ld	(ix+long),c
+	ld	(ix+long+1),b
+	dec	(ix+count)		; decrease countdown
+
+intPoint:
+	push	de
+	bcall(_CONVOP1)		; convert OP1 (now holding y-position) to int in DE
+	push	de
+	bcall(_OP5TOOP1)		; convert OP5 (the x-position) to integer in DE
+	bcall(_CONVOP1)
+	ld	b,e			; put rounded-off x-position in B ...
+	pop	de
+	ld	c,e			; ... and rounded-off y-position in C
+	pop	de
+	ex	de,hl
+
+	ld	e,b			; check for a skipped pixel
+	call	fixOrdinate
+	ld	b,e
+	ld	e,c
+	call	fixOrdinate
+	ld	c,e
+
+	inc	hl
+	inc	hl
+	ld	(hl),c		; put y-position at head of coordinate queue
+	inc	hl
+	ld	(hl),b		; put x-position at head of coordinate queue
+
+	ld	(ix+newYX),c	; store the new coordinate
+	ld	(ix+newYX+1),b
+
+	ld	a,b			; check if the worm has crashed into an edge
+	cp	(ix+lWall)
+	jp	z,crash
+	cp	(ix+rWall)
+	jp	z,crash
+	ld	a,c
+	cp	63
+	jp	z,crash
+	cp	0			; check if worm is in row 0
+	jr	nz,checkSame	; if not, worm hasn't crashed into an edge
+	ld	a,(ix+aLeft)	; check if all apples have been eaten
+	cp	0
+	jp	nz,crash		; if not, there's no gap, so worm has crashed
+	ld	a,b			; otherwise, get worm's X-position
+	cp	$2c			; if it is less than $2c, crash
+	jp	c,crash
+	cp	$34			; else if it is greater than or equal to $34, crash
+	jp	nc,crash
+	call	drawNextPixel
+	jp	nextLevel		; otherwise go to the next level
+
+checkSame:
+	ld	a,c			; check if Y-position is same as previous one
+	cp	(ix+oldYX)
+	jr	nz,checkCrash	; if not, check for a crash
+	ld	a,b			; check if X-position is also same as previous one
+	cp	(ix+oldYX+1)
+	jp	z,drawPix		; if so, head hasn't moved so don't check for a crash
+
+checkCrash:
+	ld	a,c			; if the previous and current pixels aren't diagonal
+	cp	(ix+oldYX)		; to each other, skip the next part, otherwise check
+	jr	z,skipDiag		; if the two pixels about them are both lit (to
+	ld	a,b			; prevent the worm crossing over itself)
+	cp	(ix+oldYX+1)
+	jp	z,skipDiag
+
+	ld	d,b			; store first diagonal coordinate in DE
+	ld	e,(ix+oldYX)
+	ld	hl,saferam1
+	ld	c,(ix+long)		; loop (long - 2) times
+	ld	b,(ix+long+1)
+	dec	bc
+	dec	bc
+crashLoop1:
+	ld	a,e			; check if Y-position matches nth Y-pos in list
+	cpi
+	jr	nz,skipX1		; if not, skip to next coordinate
+	ld	a,d			; check if X-position also matches nth X-pos in list
+	cp	(hl)
+	jr	z,diag2		; if so, first diagonal contains some worm, check 2nd
+skipX1:
+	inc	hl			; move to next coordinate
+	dec	bc
+	ld	a,b			; loop back if BC is not 0
+	or	c
+	jr	nz,crashLoop1
+	jr	skipDiag
+
+diag2:
+	ld	d,(ix+oldYX+1)	; store second diagonal coordinate in DE
+	ld	e,(ix+newYX)
+	ld	hl,saferam1
+	ld	c,(ix+long)		; loop (long - 2) times
+	ld	b,(ix+long+1)
+	dec	bc
+	dec	bc
+crashLoop2:
+	ld	a,e			; check if Y-position matches nth Y-pos in list
+	cpi
+	jr	nz,skipX2		; if not, skip to next coordinate
+	ld	a,d			; check if X-position also matches nth X-pos in list
+	cp	(hl)
+	jp	z,crash		; if so, second diagonal also contains worm (a crash)
+skipX2:
+	inc	hl			; move to next coordinate
+	dec	bc
+	ld	a,b			; loop back if BC is not 0
+	or	c
+	jr	nz,crashLoop2
+
+skipDiag:
+	ld	c,(ix+newYX)	; retrieve current coordinate
+	ld	b,(ix+newYX+1)
+	ld	(ix+oldYX),c	; store current coordinate in oldYX (prev. coordinate)
+	ld	(ix+oldYX+1),b
+	ld	d,b			; store current coordinate in DE
+	ld	e,c
+	ld	hl,saferam1		; make HL point to start of coordinate list
+	ld	c,(ix+long)		; loop (long - 2) times
+	ld	b,(ix+long+1)
+	dec	bc
+	dec	bc
+crashLoop3:
+	ld	a,e			; check if Y-position matches nth Y-pos in list
+	cpi
+	jr	nz,skipX3		; if not, skip to next coordinate
+	ld	a,d			; check if X-position also matches nth X-pos in list
+	cp	(hl)
+	jp	z,crash		; if so, worm has run into himself (a crash)
+skipX3:
+	inc	hl			; move to next coordinate
+	dec	bc
+	ld	a,b			; loop back if BC is not 0
+	or	c
+	jr	nz,crashLoop3
+
+	ld	e,(ix+newYX)	; load current coordinate into A and E
+	ld	a,(ix+newYX+1)
+	call	ionGetPixel		; make HL point to byte in graph buffer and A = bit mask
+	and	(hl)			; check if current coordinate is already lit
+	jr	z,drawPix		; if not, then worm hasn't hit a apple
+	ld	a,(ix+appSz)	; otherwise, erase the apple
+	push	af
+	call	findSprite
+	call	drawApple
+	call	drawNextPixel
+	pop	af			; get the apple's width
+	add	a,4
+	ld	l,(ix+score)	; and add it to the score
+	ld	h,(ix+score+1)
+	ld	b,0
+	ld	c,a
+	add	hl,bc
+	ld	(ix+score),l
+	ld	(ix+score+1),h
+	sla	a			; quadruple it
+	sla	a
+	add	a,(ix+count)	; and add it to the countdown
+	ld	(ix+count),a
+	dec	(ix+aLeft)		; decrease the numbers of apples left
+	ld	a,(ix+aLeft)	; check if it was the last apple
+	cp	0
+	jr	nz,nextApple	; if not, generate a new one
+	ld	a,%11110000		; otherwise, make a gap at the top of the screen
+	ld	(PLOTSSCREEN+5),a
+	ld	a,%00001111
+	ld	(PLOTSSCREEN+6),a
+	jr	drawPix		; don't generate another apple
+
+nextApple:
+	call	putApple		; generate a new apple
+
+drawPix:
+	call	drawNextPixel
+
+	ld	b,(ix+delay)	; game-loop delay
+	ld	c,1
+delayLoop:
+	dec	bc
+	ld	a,b
+	cp	0
+	jr	nz,delayLoop
+
+	jp	game			; repeat game-loop
+
+
+;******** Routines ********
+
+doLookup:
+	push	de
+	ld	a,b			; multiply x-index by 9 to get byte-offset for array
+	rla				; by multiplying by 8 ...
+	rla
+	rla
+	add	a,b			; ... and adding itself
+	ld	c,a			; put result in BC
+	ld	b,0
+	ld	hl,saferam3+trig	; point HL to start of precalc array
+	add	hl,bc			; add to HL, now HL points to correct FP num
+	ld	de,OPblk		; point DE to OP1
+	ld	bc,9			; copy the 9-bytes FP num into OP1
+	ldir
+	pop	de
+	ret
+
+vertLine:
+	ld	b,62
+lineV:
+	ld	(hl),a
+	ld	de,12
+	add	hl,de
+	djnz	lineV
+	ret
+
+fixOrdinate:
+	dec	hl
+	ld	a,e
+	sub	(hl)
+	ld	d,a
+	cp	2
+	jr	z,diffTwo
+	cp	-2
+	jr	z,diffTwo
+	ret
+diffTwo:
+	sra	d
+	ld	a,e
+	sub	d
+	ld	e,a
+	ret
+
+drawNextPixel:
+	ld	e,(ix+newYX)	; load current coordinate into A and E
+	ld	a,(ix+newYX+1)
+	call	ionGetPixel		; make HL point to byte in graph buffer and A = bit mask
+	or	(hl)			; combine the byte with the mask
+	ld	(hl),a		; to draw the point
+	bcall(_GRBUFCPY)		; copy the graph buffer to the screen
+	ret
+
+getHSloc:
+	ld	b,0			; make BC equal speed
+	ld	c,(ix+speed)
+	sla	c			; double it because each high score takes two bytes
+	ld	hl,highs		; make HL point to appropriate high score
+	add	hl,bc
+	ret
+
+shortDelay:
+	ld	bc,sdel		; get delay duration
+sdPause:
+	dec	bc
+	ld	a,b			; loop back until BC = 0
+	or	c
+	jr	nz,sdPause
+	ret
+
+clearHS:
+	call	getHSloc		; get location of high score
+	ld	(hl),0		; clear it
+	inc	hl
+	ld	(hl),0
+	jp	showMenu
+
+down:
+	dec	(ix+speed)		; decrease speed variable
+	ld	a,(ix+speed)
+	cp	-1			; check if user has gone past bottom
+	jp	nz,showMenu
+	ld	(ix+speed),0
+	jp	showMenu
+
+up:
+	inc	(ix+speed)		; increase speed variable
+	ld	a,(ix+speed)
+	cp	3			; check if user has gone past top
+	jp	nz,showMenu
+	ld	(ix+speed),2
+	jp	showMenu
+
+left:
+	dec	(ix+angle)		; decrease angle
+	ld	a,(ix+angle)
+	cp	-1			; check if we need to wrap around to 31
+	ret	nz
+	ld	(ix+angle),31
+	ret
+
+right:
+	inc	(ix+angle)		; increase angle
+	ld	a,(ix+angle)
+	cp	32			; check if we need to wrap around to 0
+	ret	nz
+	ld	(ix+angle),0
+	ret
+
+putApple:
+	ld	b,5			; randomise size of apple
+	call	ionRandom
+	ld	(ix+appSz),a
+	ld	c,a
+
+	ld	a,51			; randomise Y coordinate of apple (dependent on size)
+	add	a,c
+	ld	b,a
+	call	ionRandom
+	add	a,5
+	sub	c
+	ld	(ix+appYX),a
+
+	ld	a,(ix+rWall)	; randomise X coordinate of apple (dependent on size
+	sub	(ix+lWall)		; and on positions of left and right boundaries)
+	sub	12
+	add	a,c
+	ld	b,a
+	call	ionRandom
+	add	a,(ix+lWall)
+	add	a,5
+	sub	c
+	ld	(ix+appYX+1),a
+
+	ld	a,c			; make HL point to the sprite
+	call	findSprite
+	push	hl			; save pointer to the sprite
+	ld	a,(ix+appSz)	; make B equal the number of lines in the sprite
+	add	a,4
+	ld	b,a
+	ld	e,(ix+appYX)	; load apple coordinate into A and E
+	ld	a,(ix+appYX+1)
+fitLoop:
+	push	bc
+	push	af
+	push	de
+	push	hl
+	call	ionGetPixel		; make HL point to byte which contains upper-left corner
+	ld	d,(hl)		; of sprite, make A consist of all zero bits except for
+	inc	hl			; the bit representing the upper-left corner, load the
+	ld	e,(hl)		; byte and the subsequent byte (from gr buff) into D & E
+shiftLoop:
+	rla				; shift A left until the 1 moves into the carry flag ...
+	jr	c,shiftDone
+	rl	e			; ... each time shifting D and E left
+	rl	d
+	jr	shiftLoop
+shiftDone:				; now D contains all bits of interest from graph buffer
+	pop	hl			; HL now points to current row of current sprite
+	ld	a,d			; check if any bit is lit in both the sprite byte and D
+	and	(hl)
+	jr	nz,noFit		; if so, the whole apple won't fit in this position
+	inc	hl			; otherwise, move on to next row of sprite
+	pop	de
+	pop	af
+	pop	bc
+	inc	e			; move on to next row of the screen
+	djnz	fitLoop
+	pop	hl			; HL now points to the start of the sprite again
+	jr	drawApple
+noFit:
+	pop	de			; try again with new coordinates and a new size apple
+	pop	af
+	pop	bc
+	pop	hl
+	jr	putApple
+
+drawApple:
+	ld	a,(ix+appSz)	; make B equal the number of lines in the sprite
+	add	a,4
+	ld	b,a
+	ld	e,(ix+appYX)	; load current coordinate into A and E
+	ld	a,(ix+appYX+1)
+	push	ix			; load IX with sprite address
+	ld	(saferam3+temp),hl
+	ld	ix,(saferam3+temp)
+	ld	l,e
+	call	ionPutSprite	; draw the apple
+	pop	ix
+	ret
+
+findSprite:				; where A = apple size
+	ld	hl,apples		; make HL point to start of apple sprites
+	cp	0			; if apple is the smallest size, leave HL and return
+	ret	z
+	ld	b,a			; otherwise add 4, then 5, etc until B is 0
+	ld	de,4
+findLoop:
+	add	hl,de
+	inc	de
+	djnz	findLoop
+	ret
+
+crash:
+	call	invert		; invert screen
+	call	shortDelay		; pause
+	call	invert		; invert screen again
+endGame:
+	set	textinverse,(iy+textflags)
+	ld	bc,$0003		; display your score text
+	ld	hl,yourScore
+	call	printLarge
+	ld	bc,$0004		; display high score text
+	ld	hl,highScore
+	call	printLarge
+
+	call	getHSloc		; make HL point to high score for current speed
+	push	hl			; save high score location
+	ld	e,(hl)		; load DE with high score
+	inc	hl
+	ld	d,(hl)
+	ld	l,(ix+score)	; load HL with current score
+	ld	h,(ix+score+1)
+	ld	bc,$0b03		; display current score
+	ld	(CURROW),bc
+	push	de
+	push	hl
+	bcall(_dispHL)
+	pop	hl
+	pop	de
+	call	highscr		; work out new high score
+	ld	bc,$0b04		; display new high score
+	ld	(CURROW),bc
+	push	hl
+	bcall(_dispHL)
+	pop	hl
+	pop	de			; restore high score location
+	ld	a,l			; write high score back to original location
+	ld	(de),a
+	inc	de
+	ld	a,h
+	ld	(de),a
+	res	textinverse,(iy+textflags)
+	call	press2nd
+	jp	restart
+
+invert:
+	ld	bc,$300		; $300 bytes in the graph buffer
+	ld	hl,PLOTSSCREEN
+invertLoop:
+	ld	a,(hl)		; invert the current byte
+	cpl
+	ld	(hl),a
+	inc	hl			; move onto the next byte
+	dec	bc
+	ld	a,b			; loop back until BC = 0
+	or	c
+	jr	nz,invertLoop
+	bcall(_GRBUFCPY)		; copy the graph buffer to the screen
+	ret
+
+nextLevel:
+	set	textinverse,(iy+textflags)
+	ld	bc,$0003		; display bonus text
+	ld	hl,bonus
+	call	printLarge
+	ld	bc,$0004		; display your score text
+	ld	hl,yourScore
+	call	printLarge
+
+	inc	(ix+level)		; increment level number
+	ld	e,(ix+level)	; multiply new level number by 16
+	sla	e
+	sla	e
+	sla	e
+	sla	e
+	ld	d,0
+	push	de
+	ex	de,hl
+	ld	bc,$0b03		; display bonus
+	ld	(CURROW),bc
+	bcall(_dispHL)
+	pop	de
+	ld	l,(ix+score)	; and add it to the score
+	ld	h,(ix+score+1)
+	add	hl,de
+	ld	(ix+score),l
+	ld	(ix+score+1),h
+	ld	bc,$0b04		; display current score
+	ld	(CURROW),bc
+	bcall(_dispHL)
+	res	textinverse,(iy+textflags)
+
+	ld	a,(ix+lWall)	; add 8 to left boundary
+	add	a,8
+	ld	(ix+lWall),a
+	ld	a,(ix+rWall)	; subtract 8 from right boundary
+	sub	8
+	ld	(ix+rWall),a
+	call	press2nd
+	ld	a,(ix+level)
+	cp	6
+	jp	z,endGame
+	jp	startLevel		; start the next level
+
+press2nd:
+	ld	b,$bf
+	call	getKeyData
+	cp	223			; check if 2nd is pressed
+	ret	z
+	jr	press2nd
+
+
+;---------= High Score =---------
+; Input: de=previous high score
+;	hl=current score
+; Output: hl=high score
+;	z=1 (a=0) if new high score, z=0 (a=1) if not
+; Registers destroyed: af, de, hl
+highscr:	push	hl
+	xor	a
+	sbc	hl,de
+	pop	hl
+	jr	z,nnhs
+	jr	nc,nhs
+nnhs:	ex	de,hl
+	inc	a
+	ret
+nhs:	or	a
+	ret
+
+
+precalcs:
+	bcall(_OP1SET0)		; get PI/2 in OP1
+	bcall(_ACOS)
+	ld	a,8			; divide it by 8 to get angle 1/32nd of a circle
+	bcall(_SETXXOP2)
+	bcall(_FPDIV)
+	bcall(_OP1TOOP6)		; store this smallest angle increment in OP6
+
+	xor	a			; first precalc will be sin 0, then sin 2*PI/32 
+	ld	de,saferam3+trig	; point DE to the trig precalc array
+precalc:
+	push	af
+	push	de
+	bcall(_SETXXOP1)		; put precalc number in OP1
+	bcall(_OP6TOOP2)		; put angle increment in OP2
+	bcall(_FPMULT)		; multiply them
+	bcall(_SIN)			; get its sine
+	pop	de
+	bcall(_MOVFROP1)		; put the result in the precalc array
+	pop	af
+	inc	a			; prepare for next precalc
+	cp	9			; only 9 precalcs needed
+	jr	nz,precalc
+
+	ret
+
+printSmall:
+	ld	(PENCOL),bc
+	bcall(_vputs)
+	ret
+
+printLarge:
+	ld	(CURROW),bc
+	bcall(_puts)
+	ret
+
+getKeyData:
+	ld	a,$ff			; reset keyport
+	out	(1),a
+	ld	a,b
+	out	(1),a
+	in	a,(1)
+	ret
+
+quit:
+	bit	0,(ix+split)	; turn split screen back on if necessary
+	ret	z
+	set	grfSplit,(iy+SGRFLAGS)
+	ret
+
+
+
+;******** Data ********
+
+apples:
+	.db	%01100000
+	.db	%11110000
+	.db	%11110000
+	.db	%01100000
+
+	.db	%01110000
+	.db	%11111000
+	.db	%11111000
+	.db	%11111000
+	.db	%01110000
+
+	.db	%01111000
+	.db	%11111100
+	.db	%11111100
+	.db	%11111100
+	.db	%11111100
+	.db	%01111000
+
+	.db	%00111000
+	.db	%01111100
+	.db	%11111110
+	.db	%11111110
+	.db	%11111110
+	.db	%01111100
+	.db	%00111000
+
+	.db	%00111100
+	.db	%01111110
+	.db	%11111111
+	.db	%11111111
+	.db	%11111111
+	.db	%11111111
+	.db	%01111110
+	.db	%00111100
+
+heading:
+	.db	%00000000,%00111000,%00000000,%00000011,%00000000,%00000000
+	.db	%01000011,%00000011,%10000000,%00000000,%00000000,%00000000
+	.db	%00001000,%00111000,%00000000,%00000011,%00000000,%00000000
+	.db	%11100011,%10000011,%10000000,%00000000,%00000000,%00000000
+	.db	%00001100,%00011000,%00000000,%00000011,%00000000,%00000000
+	.db	%11100011,%10000011,%00000000,%00000000,%00000000,%00000000
+	.db	%00001100,%00011000,%00000000,%00000011,%00000000,%00000000
+	.db	%01100011,%10000011,%00000000,%00000000,%00000000,%00000000
+	.db	%00001100,%00011000,%00000000,%00000011,%00000000,%00000000
+	.db	%01100110,%11000111,%00000000,%00000000,%00000000,%00000000
+	.db	%00001100,%00011011,%00011000,%01110011,%00001110,%00000000
+	.db	%01110110,%11000111,%00011100,%01100111,%01110111,%00010000
+	.db	%00001100,%00011011,%00111100,%11110011,%00011111,%00000000
+	.db	%01110110,%01000110,%00111110,%01101110,%01110111,%00111000
+	.db	%00001100,%00011011,%01111100,%11011011,%00011011,%00000000
+	.db	%00110110,%01101110,%01110011,%01111000,%01111111,%00111000
+	.db	%00001100,%00011011,%11111101,%11011011,%00110011,%00000000
+	.db	%00110110,%01101110,%01100011,%01110000,%01111111,%01111000
+	.db	%00001100,%00011011,%11101101,%10011011,%00110111,%00000000
+	.db	%00111100,%01111110,%01100011,%01110000,%01111011,%01111000
+	.db	%00001110,%00111011,%11001101,%10011011,%00110110,%00000000
+	.db	%00111100,%00111100,%01100011,%01100000,%01111011,%11011000
+	.db	%00000110,%00110011,%10001101,%10000011,%00111100,%00000000
+	.db	%00011100,%00111100,%01100011,%01100000,%01110011,%11011000
+	.db	%00000110,%00110011,%10001101,%10011011,%00110001,%00000000
+	.db	%00011100,%00111100,%01100011,%01100000,%01110011,%10011000
+	.db	%00000111,%01110011,%00001101,%10011011,%00110011,%10000000
+	.db	%00011110,%00111100,%01100111,%01100000,%00110011,%10011000
+	.db	%00000011,%11100011,%10000000,%11110011,%00011111,%00000000
+	.db	%00011110,%00011000,%00111110,%01100000,%00000011,%00011000
+	.db	%00000001,%11000011,%00000000,%01100011,%00001110,%00000000
+	.db	%00001100,%00000000,%00011100,%01100000,%00000001,%00011000
+
+wormPic:
+	.db	%00000000,%00000011,%11000000,%00000000,%00000000
+	.db	%00000000,%00001110,%00110000,%00000000,%00000000
+	.db	%00000000,%00110010,%00101100,%00000000,%00000000
+	.db	%00000000,%01100010,%00100010,%00000000,%00000000
+	.db	%00000000,%10100001,%00100001,%00000000,%00000000
+	.db	%00000000,%10010001,%01000010,%10000000,%00000000
+	.db	%00000001,%00001011,%11001000,%10000000,%00000000
+	.db	%00000001,%10000100,%00100000,%10000000,%00000000
+	.db	%00000010,%01111000,%00010001,%00000000,%00000000
+	.db	%00000010,%00010000,%00001110,%00000000,%00000000
+	.db	%00000011,%00110000,%00000000,%00000000,%00000000
+	.db	%00000010,%11010000,%00000000,%00000000,%00111110
+	.db	%00000010,%00010001,%11111111,%00000000,%11111111
+	.db	%00000011,%00111110,%00000000,%11000011,%11111111
+	.db	%00000010,%11000100,%00000000,%00101111,%11111111
+	.db	%00000001,%00001010,%00000000,%00011111,%11000011
+	.db	%00000001,%11110001,%00000000,%00111111,%00000000
+	.db	%00000010,%01000010,%10000100,%01111100,%00000000
+	.db	%00000100,%00111100,%10000100,%11110011,%10000000
+	.db	%00001000,%00010000,%11100100,%11100000,%01000000
+	.db	%00010000,%00010111,%01100010,%00000000,%00100000
+	.db	%00010000,%00111000,%01100011,%10001000,%00010000
+	.db	%00100000,%00111110,%11100000,%11110000,%00010000
+	.db	%01000000,%00011111,%11000000,%00000000,%00001000
+	.db	%01000000,%00001111,%10000000,%00000000,%00001000
+	.db	%01000000,%00000000,%00000000,%00000000,%00000100
+	.db	%01000000,%00000000,%00000000,%00000000,%00000100
+	.db	%10000000,%00000000,%00000000,%00000000,%00000100
+	.db	%10000000,%00000000,%00000000,%00000000,%00000100
+	.db	%10000000,%00000000,%00000000,%00000000,%00000100
+	.db	%10000000,%00000000,%00000000,%00000000,%00000100
+	.db	%10000000,%00000000,%00000000,%00000000,%00001000
+
+url:
+	.db	"http://move.to/badja",0
+
+press0:
+	.db	"Press 0 to clear a high score",0
+
+slow:
+	.db	"Slow",0
+
+medium:
+	.db	"Medium",0
+
+fast:
+	.db	"Fast",0
+
+spaces:
+	.db	"     ",0
+
+bonus:
+	.db	"     Bonus:",0
+
+yourScore:
+	.db	"Your score:",0
+
+highScore:
+	.db	"High score:",0
+
+highs:
+	.dw	0,0,0
+
+.end

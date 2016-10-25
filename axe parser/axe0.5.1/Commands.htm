@@ -1,0 +1,975 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Axe Parser Documentation</title>
+</head>
+<body bgcolor="#ffffff" text="#000000" leftmargin="20">
+<font face="Helvetica">
+<center><h1><font color="000080">Axe Parser v0.5.1</font></h1>
+<hr />
+<h2>Command List Index</h2>
+<a href="#Sym">System</a><br />
+<a href="#Sbf">Screen and Buffer</a><br />
+<a href="#Cst">Control Blocks</a><br />
+<a href="#Las">Labels and Subroutines</a><br />
+<a href="#Mat">Basic Math</a><br />
+<a href="#Amt">Advanced Math</a><br />
+<a href="#Drw">Drawing</a><br />
+<a href="#Spr">Sprites</a><br />
+<a href="#Txt">Text</a><br />
+<a href="#Das">Data and Storage</a><br />
+<a href="#Fmn">External Variables</a><br />
+<a href="#Int">Interrupts</a><br />
+<a href="#Lpt">Link Port</a><br /></center>
+
+<br />
+<a name="Sym"></a>
+<font color="#00007f"><b><big>System</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">_</font></td>
+<td>Spaces are ignored in most situations.  They mainly just help for code organization and readability.</td>
+</tr>
+<tr>
+<td><font face="Courier">:</font></td>
+<td>The colon and enter key end a line of code.</td>
+</tr>
+<tr>
+<td><font face="Courier">.</font></td>
+<td>The period is a single line comment. Whatever follows will be ignored until the next newline.</td>
+</tr>
+<tr>
+<td><font face="Courier">...</font></td>
+<td>Start or end of a multi-line comment ignoring everything in between.  Must be the first characters on the line.</td>
+</tr>
+<tr>
+<td><font face="Courier">DiagnosticOn</font></td>
+<td>Turns on the run indicator (marching ants). Program will display "done" after finishing.</td>
+</tr>
+<tr>
+<td><font face="Courier">DiagnosticOff</font></td>
+<td>Turns off the run indicator. Program will not display "done" after finishing.</td>
+</tr>
+<tr>
+<td><font face="Courier">Full</font></td>
+<td>Full speed mode is activated if supported, making it 3 times faster on newer calculators.  Returns 0 if not supported.</td>
+</tr>
+<tr>
+<td><font face="Courier">Normal</font></td>
+<td>Full speed mode is deactivated.</td>
+</tr>
+<tr>
+<td><font face="Courier">Pause <font color="#ff0000">EXP</font></td>
+<td>Pause for the given amount of time.  A one second pause is a value of roughly 1800 at normal speed or 4500 in full speed mode.</td>
+</tr>
+<tr>
+<td><font face="Courier">getKey</font></td>
+<td>Returns the last key pressed or zero if no keys are pressed.  Its just like the BASIC getkey, but with different codes.</td>
+</tr>
+<tr bgcolor="#dfffbf">
+<td><font face="Courier">getKey<sup>r</sup></font></td>
+<td>Pauses until a key or key combination is pressed and returns the key code.  These are different codes than the normal getkeys.</td>
+</tr>
+<tr>
+<td><font face="Courier">getKey(<font color="#ff0000">KEY</font>)</font></td>
+<td>Returns 1 if the key is held down this instant and 0 otherwise.</td>
+</tr>
+<tr>
+<td><font face="Courier">getKey(0)</font></td>
+<td>Returns a non-zero number if any key is held down and 0 otherwise.</td>
+</tr>
+<tr>
+<td><font face="Courier">Asm(<font color="#7f7f7f">HEX</font>)</font></td>
+<td>Native assembly code written in hexadecimal is inserted at the current position.</td>
+</tr>
+<tr>
+<td><font face="Courier">prgm<font color="#0000ff">NAME</font></font></td>
+<td>The code from the external program is parsed as if it completely replaced this command in the main program.  (Similar to the C++ "include")</td>
+</tr>
+<tr>
+<td><font face="Courier">#Axiom(<font color="#0000ff">NAME</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: AsmComp()</font></div></font></td>
+<td>The Axiom assembly library becomes useable in the program.  No quotes needed, just type the name of the appvar case sensitive.</td>
+</tr>
+<tr>
+<td><font face="Courier">#Icon(<font color="#7f7f7f">HEX</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: identity()</font></div></font></td>
+<td>Tells the parser to replace the default icon with the new icon.  The icon must be 64 hex characters long.</td>
+</tr>
+<tr>
+<td><font face="Courier">#Realloc(<font color="#ff0000">PTR</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: Real()</font></div></font></td>
+<td>Moves the variable buffer to another location in ram.  If the field is left blank, the default location is restored.</td>
+</tr>
+</table>
+
+<br />
+<a name="Sbf"></a>
+<font color="#00007f"><b><big>Screen and Buffer</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">ClrHome</font></td>
+<td>Erases the screen and text shadow and moves the cursor to the upper left corner.</td>
+</tr>
+<tr>
+<td><font face="Courier">ClrDraw</font></td>
+<td>Erases the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">ClrDraw<sup>r</sup></font></td>
+<td>Erases the back buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">DispGraph</font></td>
+<td>Draws the buffer on the screen.</td>
+</tr>
+<tr>
+<td><font face="Courier">DispGraph<sup>r</sup></font></td>
+<td>Draws the 2 buffers on the screen to create 3 color grayscale.  Will not work in full speed mode.</td>
+</tr>
+<tr>
+<td><font face="Courier">DispGraph<sup>rr</sup></font></td>
+<td>Draws the 2 buffers on the screen to create 4 color grayscale.  Will not work in full speed mode.</td>
+</tr>
+<tr>
+<td><font face="Courier">DispGraphClrDraw</font></td>
+<td>Same as DispGraph:ClrDraw but its just as fast as DispGraph alone.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;DispGraph</font></td>
+<td>Draws the 768 bytes of an arbitrary buffer at the pointed location onto the screen.</td>
+</tr>
+<tr>
+<td><font face="Courier">StoreGDB</font></td>
+<td>Copies the screen to the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">StorePic</font></td>
+<td>Copies the buffer to the back-buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">RecallPic</font></td>
+<td>Copies the back-buffer to the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">DrawInv</font></td>
+<td>The colors on the buffer are inverted.</td>
+</tr>
+<tr>
+<td><font face="Courier">DrawInv <sup>r</sup></font></td>
+<td>The colors on the back buffer are inverted.</td>
+</tr>
+<tr>
+<td><font face="Courier">Horizontal +<br />
+Horizontal -</font></td>
+<td>The buffer is shifted right (+) or left (-) by 1 pixel.  White pixels are shifted in.</td>
+</tr>
+<td>
+<font face="Courier">Vertical +<br />
+Vertical -</font></td>
+<td>The buffer is shifted down (+) or up (-) by 1 pixel.  New pixels are not shifted in, that row remains the same.</td>
+</tr>
+<tr>
+<td><font face="Courier">Horizontal +<sup>r</sup><br />
+Horizontal -<sup>r</sup></font></td>
+<td>The back buffer is shifted right (+) or left (-) by 1 pixel.  White pixels are shifted in.</td>
+</tr>
+<tr>
+<td><font face="Courier">Vertical +<sup>r</sup><br />
+Vertical -<sup>r</sup></font></td>
+<td>The back buffer is shifted down (+) or up (-) by 1 pixel.  New pixels are not shifted in, that row remains the same.</td>
+</tr>
+<tr>
+<td><font face="Courier">Shade(<font color="#ff0000">EXP</font>)</font></td>
+<td>Sets the contrast.  0 is lightest, 63 is darkest.</td>
+</tr>
+</table>
+
+<br />
+<a name="Cst"></a>
+<font color="#00007f"><b><big>Control Blocks</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">If <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>If the expression is true, code1 will be executed.</td>
+</tr>
+<tr>
+<td><font face="Courier">If <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />Else
+<br />&nbsp;<font color="#007f00">code2</font>
+<br />End</font></td>
+<td>If the expression is true, then only code1 is executed.  Otherwise, only code 2 is executed.</td>
+</tr>
+<tr>
+<td><font face="Courier">ElseIf <font color="#ff0000">EXP</font>
+<td>Can be used inside If blocks.  If the condition is true, the block's code is executed and then goes to the end of the If block.</td>
+</tr>
+<tr>
+<td><font face="Courier">!If <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>If the expression is false, code1 will be executed.</td>
+</tr>
+<tr>
+<td><font face="Courier">!If <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />Else
+<br />&nbsp;<font color="#007f00">code2</font>
+<br />End</font></td>
+<td>If the expression is false, then only code1 is executed.  Otherwise, only code 2 is executed.</td>
+</tr>
+<tr>
+<td><font face="Courier">Else!If <font color="#ff0000">EXP</font>
+<td>Can be used inside If blocks.  If the condition is false, the block's code is executed and then goes to the end of the If block.</td>
+</tr>
+<tr>
+<td><font face="Courier">While <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>The expression is checked first. If its true, code1 will be executed over and over until its false.</td>
+</tr>
+<tr>
+<td><font face="Courier">Repeat <font color="#ff0000">EXP</font>
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>The expression is checked first. If its false, code1 will be executed over and over until its true.</td>
+</tr>
+<tr>
+<td><font face="Courier">For(<font color="#ff7f00">VAR</font>,<font color="#ff0000">EXP1</font>,<font color="#ff0000">EXP2</font>)
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>The variable is initialized with expression1.  Until the variable is greater than expression2, code1 is executed and the variable is incremented by 1.</td>
+</tr>
+<tr>
+<td><font face="Courier">DS<(<font color="#ff7f00">VAR</font>,<font color="#ff0000">MAX</font>)
+<br />&nbsp;<font color="#007f00">code1</font>
+<br />End</font></td>
+<td>The variable is decreased by 1.  If its 0, code1 is executed and the variable resets back to Max.  If its not 0 yet, code1 is skipped.</td>
+</tr>
+<tr=>
+<td><font face="Courier">EndIf <font color="#ff0000">EXP</font></td>
+<td>In loops, it works just like a regular "End" if the condition is true. But it will exit the loop if the condition is false.</td>
+</tr>
+<tr>
+<td><font face="Courier">End!If <font color="#ff0000">EXP</font></td>
+<td>In loops, it works just like a regular "End" if the condition is false.  But it will exit the loop if the condition is true.</td>
+</tr>
+</table>
+
+<br />
+<a name="Las"></a>
+<font color="#00007f"><b><big>Labels and Subroutines</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Lbl <font color="#007f7f">LBL</font></font></td>
+<td>Creates a label at the current position.</td>
+</tr>
+<tr>
+<td><font face="Courier">Goto <font color="#007f7f">LBL</font></font></td>
+<td>Jumps to the label.</td>
+</tr>
+<tr>
+<td><font face="Courier">sub(<font color="#007f7f">LBL</font>)</font></td>
+<td>Calls the subroutine.  All subroutines should end with a Return.</td>
+</tr>
+<tr>
+<td><font face="Courier">sub(<font color="#007f7f">LBL</font>,...)</font></td>
+<td>Loads up to 6 arguments to the r<sub>1</sub> through r<sub>6</sub> variables respectively.  Then the subroutine is called.</td>
+</tr>
+<tr>
+<td><font face="Courier">sub(<font color="#007f7f">LBL</font><sup>r</sup>,...)</font></td>
+<td>Same as above except the argument variables it uses are saved before the subroutine is called and restored when it returns.</td>
+</tr>
+<tr>
+<td><font face="Courier">Return</font></td>
+<td>Returns from a subroutine.  If not in a subroutine, the program will end.</td>
+</tr>
+<tr>
+<td><font face="Courier">ReturnIf <font color="#ff0000">EXP</font></font></td>
+<td>Returns only if the expression is true.</td>
+</tr>
+<tr>
+<td><font face="Courier">Return!If <font color="#ff0000">EXP</font></font></td>
+<td>Returns only if the expression is false.</td>
+</tr>
+</table>
+
+<br />
+<a name="Mat"></a>
+<font color="#00007f"><b><big>Basic Math</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff7f00">VAR</font></font></td>
+<td>Returns the variable.  Uppercase A through Z, Theta, and r<sub>1</sub> through r<sub>6</sub> are variables.</td>
+</tr>
+<tr>
+<td><font face="Courier">&#176;<font color="#ff7f00">VAR</font></font></td>
+<td>Returns the pointer to the variable.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;<font color="#ff7f00">VAR</font></font></td>
+<td>Stores the expression into the variable.</td>
+</tr>
+<tr>
+<td><font face="Courier">'<font color="#0000ff">CHAR</font>'</font></td>
+<td>Converts an ASCII constant into an integer.</td>
+</tr>
+<tr>
+<td><font face="Courier">-<font color="#ff0000">EXP</font></td>
+<td>Returns the negative of the expression.  That's a negative sign, not a minus sign!</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>+<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>-<font color="#ff0000">EXP2</font></font></td>
+<td>Expression2 is added to or subtracted from expression1.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>*<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>/<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>^<font color="#ff0000">EXP2</font></font></td>
+<td>Expression1 is multiplied, divided, or the modulus of expression2.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font><sup>2</sup></font></td>
+<td>The expression is multiplied by itself.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>=<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&ne;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&lt;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&le;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&gt;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&ge;<font color="#ff0000">EXP2</font></font></td>
+<td>Returns 1 if the statement is true or 0 if its false.  This is an unsigned comparison.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font> or <font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font> and <font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font> xor <font color="#ff0000">EXP2</font></font></td>
+<td>Returns the bitwise operation of the lower 8 bits of the expressions.  You often need parenthesis on the second argument when used.</td>
+</tr>
+<tr>
+<td><font face="Courier">abs(<font color="#ff0000">EXP</font>)</td>
+<td>Returns the absolute value of the expression.</td>
+</tr>
+<tr>
+<td><font face="Courier">&radic;(<font color="#ff0000">EXP</font>)</td>
+<td>Returns the square root of the expression.</td>
+</tr>
+<tr>
+<td><font face="Courier">sin(<font color="#ff0000">EXP</font>)</td>
+<td>Returns the sine of the expression.  One Period is [0,256] and the value returned ranges from -127 to 127.</td>
+</tr>
+<tr>
+<td><font face="Courier">cos(<font color="#ff0000">EXP</font>)</td>
+<td>Returns the cosine of the expression.  One Period is [0,256] and the value returned ranges from -127 to 127.</td>
+</tr>
+<tr>
+<td><font face="Courier">e^(<font color="#ff0000">EXP1</font>)</td>
+<td>Returns 2 to the power of the expression (modular).</td>
+</tr>
+<tr>
+<td><font face="Courier">ln(<font color="#ff0000">EXP1</font>)</td>
+<td>Returns the log base 2 of the expression, or 255 if undefined.</td>
+</tr>
+<tr>
+<td><font face="Courier">min(<font color="#ff0000">EXP1</font>,<font color="#ff0000">EXP2</font>)</td>
+<td>Returns the minimum of the 2 expressions.</td>
+</tr>
+<tr>
+<td><font face="Courier">max(<font color="#ff0000">EXP1</font>,<font color="#ff0000">EXP2</font>)</td>
+<td>Returns the maximum of the 2 expressions.</td>
+</tr>
+<tr>
+<td><font face="Courier">rand</font></td>
+<td>Returns a random 16 bit number.</td>
+</tr>
+</table>
+
+<br />
+<a name="Amt"></a>
+<font color="#00007f"><b><big>Advanced Math</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier"><small>E</small><font color="#7f7f7f">HEX</font></font></td>
+<td>Converts a hexadecimal number into an integer.  That prefix is the scientific notation "E".</td>
+</tr>
+<tr>
+<td><font face="Courier">b<font color="#7f7f7f">BIN</font></font></td>
+<td>Converts a binary number into an integer.  That prefix is the lowercase "b".</td>
+</tr>
+<tr>
+<td><font face="Courier"><small><sup>T</sup></small><font color="#7f7f7f">TOKEN</font></font></td>
+<td>Converts the 1 or 2 byte token into an integer.  That prefix is the transpose symbol "T".</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>&lt;&lt;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&le;&le;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&gt;&gt;<font color="#ff0000">EXP2</font>
+<br /><font color="#ff0000">EXP1</font>&ge;&ge;<font color="#ff0000">EXP2</font></font></td>
+<td>Signed comparisons for numbers that aren't always positive.  Returns 1 if the statement is true or 0 if its false.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>**<font color="#ff0000">EXP2</font></font></td>
+<td>The signed multiplication is performed using the high byte as the integer part and the low byte as the decimal part returning a number in the same format.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>*^<font color="#ff0000">EXP2</font></font></td>
+<td>Computes the high order 16 bits of an unsigned multiplication.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>//<font color="#ff0000">EXP2</font></font></td>
+<td>Performs a division, but it works for negative numbers too.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>&middot;<font color="#ff0000">EXP2</font></font><br />
+<font face="Courier"><font color="#ff0000">EXP1</font><small>+</small><font color="#ff0000">EXP2</font></font><br />
+<font face="Courier"><font color="#ff0000">EXP1</font><small>&#9744;</small><font color="#ff0000">EXP2</font></font></td>
+<td>Returns respectively the full 16 bit "and", "or", and "xor" of the two expressions.  These are the plot style tokens.</td>
+</tr>
+<tr>
+<td><font face="Courier">not(<font color="#ff0000">EXP</font>)</font></td>
+<td>Returns the bitwise complement of the 8-bit number.</td>
+</tr>
+<tr>
+<td><font face="Courier">not(<font color="#ff0000">EXP</font>)<sup>r</sup></font></td>
+<td>Returns the bitwise complement of the 16-bit number.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>e<font color="#ff0000">EXP2</font></font></td>
+<td>Gets the expression2-th bit of the 8-bit number in expression1.  Unlike assembly, the leftmost bit (high order) is bit 0 and the rightmost bit (low order) is bit 7.  The bit checking is modular.  That's the Euler's constant "e".</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>ee<font color="#ff0000">EXP2</font></font></td>
+<td>Gets the expression2-th bit of the 16-bit number in expression1.  Unlike assembly, the leftmost bit (high order) is bit 0 and the rightmost bit (low order) is bit 15.  The bit checking is modular.  That's the Euler's constant "e".</td>
+</tr>
+</table>
+
+<br />
+<a name="Drw"></a>
+<font color="#00007f"><b><big>Drawing</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-On(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>A pixel becomes black on the buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-Off(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>A pixel becomes white on the buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-Change(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>A pixel will change color on the buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">pxl-Test(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>Returns 1 if pixel is black and 0 if pixel is white on the buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-On(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)<sup>r</sup></font></td>
+<td>A pixel becomes black on the back buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-Off(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)<sup>r</sup></font></td>
+<td>A pixel becomes white on the back buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pxl-Change(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)<sup>r</sup></font></td>
+<td>A pixel will change color on the back buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">pxl-Test(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)<sup>r</sup></font></td>
+<td>Returns 1 if pixel is black and 0 if pixel is white on the back buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Line(<font color="#ff0000">X1</font>,<font color="#ff0000">Y1</font>,<font color="#ff0000">X2</font>,<font color="#ff0000">Y2</font>)</font></td>
+<td>Draws a black line from point (X1,Y1) to (X2,Y2) on the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">Line(<font color="#ff0000">X1</font>,<font color="#ff0000">Y1</font>,<font color="#ff0000">X2</font>,<font color="#ff0000">Y2</font>)<sup>r</sup></font></td>
+<td>Draws a black line from point (X1,Y1) to (X2,Y2) on the back buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">Rect(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">W</font>,<font color="#ff0000">H</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: ref()</font></div></font></td>
+<td>Draws a filled rectangle with its upper left corner at (X,Y), a width of W, and a height H on the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">RectI(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">W</font>,<font color="#ff0000">H</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: rref()</font></div></font></td>
+<td>Inverts a filled rectangle with its upper left corner at (X,Y), a width of W, and a height H on the buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">Rect(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">W</font>,<font color="#ff0000">H</font>)<sup>r</sup>
+<br /><div align="right"><font color="#007f00" size="1">Key: ref()</font></div></font></td>
+<td>Draws a filled rectangle with its upper left corner at (X,Y), a width of W, and a height H on the back buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">RectI(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">W</font>,<font color="#ff0000">H</font>)<sup>r</sup>
+<br /><div align="right"><font color="#007f00" size="1">Key: rref()</font></div></font></td>
+<td>Inverts a filled rectangle with its upper left corner at (X,Y), a width of W, and a height H on the back buffer.</td>
+</tr>
+<tr>
+<td><font face="Courier">Circle(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">R</font>)</font></td>
+<td>Draws a circle with center (X,Y) and radius R on the buffer.</td>
+</tr>
+</table>
+
+<br />
+<a name="Spr"></a>
+<font color="#00007f"><b><big>Sprites</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-On(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)</font></td>
+<td>The 8x8 sprite that is pointed to is drawn to the buffer at (X,Y).  Does not clear the area behind it.</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-Off(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)</font></td>
+<td>The 8x8 sprite that is pointed to is drawn to the buffer at (X,Y) but clears the area behind it first.</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-Change(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)</font></td>
+<td>The 8x8 sprite that is pointed to inverts its pixels on the buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-On(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)<sup>r</sup></font></td>
+<td>The 8x8 sprite that is pointed to is drawn to the back buffer at (X,Y).  Does not clear the area behind it.</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-Off(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)<sup>r</sup></font></td>
+<td>The 8x8 sprite that is pointed to is drawn to the back buffer at (X,Y) but clears the area behind it first.</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-Change(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)<sup>r</sup></font></td>
+<td>The 8x8 sprite that is pointed to inverts its pixels on the back buffer at (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Pt-Mask(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">PIC</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: Plot1()</font></div></font></td>
+<td>The 8x8 grayscale sprite (2 layers) that is pointed to is drawn to both buffers at (X,Y). Areas clear on both layers are transparent and the other combinations are 3-level grayscale.  Can also be used for monochrome masking, but the back buffer still gets written to.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#007f00"><i>Pt-Command()</i></font>&rarr;<font color="#ff0000">BUFF</font></font></td>
+<td>Performs any of the Pt-On(), Pt-Off(), or Pt-change() routines to an arbitrary buffer of your choice.</td>
+</tr>
+<tr>
+<td><font face="Courier">Bitmap(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,<font color="#ff0000">BITMAP</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: Tangent()</font></div></font></td>
+<td>Draws a bitmap to the screen or buffer at (X,Y).  The structure pointed to should be height (1 byte), then width (1 byte), then the rows of the image padded to the nearest byte.</td>
+</tr>
+<tr>
+<td><font face="Courier">rotC(<font color="#ff0000">PIC</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: ShadeNorm()</font></div></font></td>
+<td>A copy of the 8x8 sprite pointed to is rotated clockwise 90 degrees.  Returns a pointer to that new rotated sprite.  Cannot be used recursively.</td>
+</tr>
+<tr>
+<td><font face="Courier">rotCC(<font color="#ff0000">PIC</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: Shade_t()</font></div></font></td>
+<td>A copy of the 8x8 sprite pointed to is rotated counter-clockwise 90 degrees.  Returns a pointer to that new rotated sprite.  Cannot be used recursively.</td>
+</tr>
+<tr>
+<td><font face="Courier">flipV(<font color="#ff0000">PIC</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: ShadeX2()</font></div></font></td>
+<td>A copy of the 8x8 sprite pointed to is flipped vertically.  Returns a pointer to that new flipped sprite.  Cannot be used recursively.</td>
+</tr>
+<tr>
+<td><font face="Courier">flipH(<font color="#ff0000">PIC</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: ShadeF()</font></div></font></td>
+<td>A copy of the 8x8 sprite pointed to is flipped horizontally.  Returns a pointer to that new flipped sprite.</td>
+</tr>
+</table>
+
+<br />
+<a name="Txt"></a>
+<font color="#00007f"><b><big>Text</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Disp <font color="#ff0000">PTR</font></font></td>
+<td>The string that is pointed to is displayed at the cursor position.  The cursor moves with the string.  If it reaches the end of the screen, it will loop around to the next line.</td>
+</tr>
+<tr>
+<td><font face="Courier">Disp <font color="#ff0000">EXP</font>&#9654;Dec</font></td>
+<td>The number is displayed as a decimal at the cursor position.  The cursor is then advanced 5 spaces.</td>
+</tr>
+<tr>
+<td><font face="Courier">Disp <font color="#ff0000">EXP</font>&#9654;Char
+<br /><div align="right"><font color="#007f00" size="1">Key: &#9654;Frac</font></div></font></td>
+<td>The ASCII character is displayed at the cursor position.  The cursor is advanced 1 space.  A new line is added if it hits the edge.</td>
+</tr>
+<tr>
+<td><font face="Courier">Disp <font color="#ff0000">EXP</font>&#9654;Tok
+<br /><div align="right"><font color="#007f00" size="1">Key: &#9654;DMS</font></div></font></td>
+<td>The 1 or 2 byte token is displayed at the cursor position.  The cursor is advanced.  A new line is added if it hits the edge.</td>
+</tr>
+<tr>
+<td><font face="Courier">Disp <font color="#0000ff">i</font></font></td>
+<td>The cursor moves to the next line down.  This is the imaginary, not lowercase 'i'.</td>
+</tr>
+<tr>
+<td><font face="Courier">Output(<font color="#ff0000">X</font>)</font></td>
+<td>The cursor moves to the cursor position (X/256,X%256).</td>
+</tr>
+<tr>
+<td><font face="Courier">Output(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>The cursor moves to the cursor position (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Output(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,...</font></td>
+<td>The cursor moves to the cursor position (X,Y) and whatever follows is displayed at that position.</td>
+</tr>
+<tr>
+<td><font face="Courier">Text <font color="#ff0000">EXP</font></font></td>
+<td>The text pointed to is drawn at the current pen location. See "Fix" command for drawing details.</td>
+</tr>
+<tr>
+<td><font face="Courier">Text <font color="#ff0000">EXP</font>&#9654;Dec</font></td>
+<td>The number is drawn as a decimal at the current pen location. See "Fix" command for drawing details.</td>
+</tr>
+<tr>
+<td><font face="Courier">Text <font color="#ff0000">EXP</font>&#9654;Char
+<br /><div align="right"><font color="#007f00" size="1">Key: &#9654;Frac</font></div></font></td>
+<td>The ASCII character is drawn at the current pen location. See "Fix" command for drawing details.</td>
+</tr>
+<tr>
+<td><font face="Courier">Text <font color="#ff0000">PTR</font>&#9654;Tok
+<br /><div align="right"><font color="#007f00" size="1">Key: &#9654;DMS</font></div></font></td>
+<td>The 1 or 2 byte token POINTED TO is drawn at the current pen location. Notice how this is different than Disp.  See "Fix" command for drawing details.</td>
+</tr>
+<tr>
+<td><font face="Courier">Text(<font color="#ff0000">X</font>)</font></td>
+<td>The text pen moves to the position (X%256,X/256).</td>
+</tr>
+<tr>
+<td><font face="Courier">Text(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>)</font></td>
+<td>The text pen moves to the position (X,Y).</td>
+</tr>
+<tr>
+<td><font face="Courier">Text(<font color="#ff0000">X</font>,<font color="#ff0000">Y</font>,...)</font></td>
+<td>The text pen moves to the position (X,Y). Whatever comes next becomes the "Text" command.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&#9654;Hex
+<br /><div align="right"><font color="#007f00" size="1">Key: &#9654;Rect</font></div></font></td>
+<td>Converts the number to hexadecimal and returns the pointer to that string.</td>
+</tr>
+<tr><td><font face="Courier">Fix 0</font></td><td>Small size font. Calculator should exit in this mode if changed!</td></tr>
+<tr><td><font face="Courier">Fix 1</font></td><td>Large size font.</td></tr>
+<tr><td><font face="Courier">Fix 2</font></td><td>Normal colored font. Calculator should exit in this mode if changed!</td></tr>
+<tr><td><font face="Courier">Fix 3</font></td><td>Inverted font.</td></tr>
+<tr><td><font face="Courier">Fix 4</font></td><td>Text is drawn directly to the screen. Calculator should exit in this mode if changed!</td></tr>
+<tr><td><font face="Courier">Fix 5</font></td><td>Text is drawn to the buffer.</td></tr>
+<tr><td><font face="Courier">Fix 6</font></td><td>Automatic scrolling on last line of display. Calculator should exit in this mode if changed!</td></tr>
+<tr><td><font face="Courier">Fix 7</font></td><td>No scrolling on last line of display</td></tr>
+<tr><td><font face="Courier">Fix 8</font></td><td>Bitmaps are drawn directly to the screen. Calculator should exit in this mode if changed!</td></tr>
+<tr><td><font face="Courier">Fix 9</font></td><td>Bitmaps are drawn to the buffer.</td></tr>
+</table>
+
+<br />
+<a name="Das"></a>
+<font color="#00007f"><b><big>Data and Storage</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#0000ff">""</font></font></td>
+<td>Adds the string to program memory, but without the ending character.</td>
+</tr>
+<tr>
+<td><font face="Courier">[<font color="#7f7f7f">HEX</font>]</font></td>
+<td>Adds the hex to the program memory.</td>
+</tr>
+<tr>
+<td><font face="Courier">[<font color="#0000ff">PICVAR</font>]</font></td>
+<td>Absorbs the picture from RAM into the program (usually 96x63 and 756 bytes).  Only the source needs the pic, not the executable.</td>
+</tr>
+<tr>
+<td><font face="Courier">[<font color="#0000ff">PICVAR</font><sup>r</sup>]</font></td>
+<td>Absorbs the tile map picture from RAM into the program.  12 tiles across, 7 tiles down (672 bytes).  Only the source needs the pic, not the executable.</td>
+</tr>
+<tr>
+<td><font face="Courier">Data(<font color="#ff0000">NUM</font>,...)
+<br /><div align="right"><font color="#007f00" size="1">Key: &Delta;List()</font></div></font></td>
+<td>Adds the bytes to program memory.  Numbers ending with <sup>r</sup> are added as 2 byte numbers.</td>
+</tr>
+<tr>
+<td><font face="Courier">Zeros(<font color="#ff0000">SIZE</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: det()</font></div></font></td>
+<td>Adds Size bytes of zeros to program memory.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#0000ff">DATA</font>&rarr;<font color="#0000ff">NAME</font></font></td>
+<td>Saves the data's pointer to a static variable.  Also terminates current string if applicable.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#0000ff">NAME</font></font></td>
+<td>Returns a pointer to the start of the data.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#0000ff">L<sub>1</sub></font></font><br />
+<font face="Courier"><font color="#0000ff">L<sub>2</sub></font></font><br />
+<font face="Courier"><font color="#0000ff">L<sub>3</sub></font></font><br />
+<font face="Courier"><font color="#0000ff">L<sub>4</sub></font></font><br />
+<font face="Courier"><font color="#0000ff">L<sub>5</sub></font></font><br />
+<font face="Courier"><font color="#0000ff">L<sub>6</sub></font></font><br /></td>
+<td>Returns a pointer to some free memory.<br />
+L<sub>1</sub> = 714 bytes (saveSScreen) Volatility: <font color="#00ff00"><b>LOW</b></font><br />
+L<sub>2</sub> = 531 bytes (statVars) Volatility: <font color="#00ff00"><b>LOW</b></font> (Do not use this area when custom interrupts are enabled, including Mirage OS)<br />
+L<sub>3</sub> = 768 bytes (appBackUpScreen) Volatility: <font color="#ff7f00"><b>MED</b></font> (Saving to back-buffer will corrupt)<br />
+L<sub>4</sub> = 323 bytes (tempSwapArea) Volatility: <font color="#ff7f00"><b>MED</b></font> (Corrupt when archiving/unarchiving in program)<br />
+L<sub>5</sub> = 128 bytes (textShadow) Volatility: <font color="#ff7f00"><b>MED</b></font> ("Disp","Output", and "ClrHome" will corrupt)<br />
+L<sub>6</sub> = 768 bytes (plotSScreen) Volatility: <font color="#ff0000"><b>HIGH</b></font> (Any buffer drawing will corrupt)</td>
+</tr>
+<tr>
+<td><font face="Courier">{<font color="#ff0000">EXP</font>}</font></td>
+<td>Returns the single byte the expression points to.  It will be in the range 0 to 255.</td>
+</tr>
+<tr>
+<td><font face="Courier">{<font color="#ff0000">EXP</font>}<sup>r</sup></font></td>
+<td>Returns the 2 byte data the expression points to.</td>
+</tr>
+<tr>
+<td><font face="Courier">{<font color="#ff0000">EXP</font>}<sup>rr</sup></font></td>
+<td>Returns the 2 byte data the expression points to but in reverse order.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>&rarr;{<font color="#ff0000">EXP2</font>}</font></td>
+<td>The single byte of Expression1 is stored to where Expression2 points.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>&rarr;{<font color="#ff0000">EXP2</font>}<sup>r</sup></font></td>
+<td>The full 2 bytes of Expression1 is stored to where Expression2 points.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP1</font>&rarr;{<font color="#ff0000">EXP2</font>}<sup>rr</sup></font></td>
+<td>The full 2 bytes of Expression1 is stored to where Expression2 points but in reverse order.</td>
+</tr>
+<tr>
+<td><font face="Courier">sign{<font color="#ff0000">EXP</font>}
+<br /><div align="right"><font color="#007f00" size="1">Key: int()</font></div></font></td>
+<td>Returns the single byte the expression points to.  It will be in the range -128 to 127.</td>
+</tr>
+<tr>
+<td><font face="Courier">nib{<font color="#ff0000">PTR</font>}
+<br /><div align="right"><font color="#007f00" size="1">Key: fPart()</font></div></font></td>
+<td>Returns the Nth nibble in RAM.  Since there are twice as many nibbles as bytes, make sure pointers are multiplied by 2.</td>
+</tr>
+<tr>
+<td><font face="Courier">nib{<font color="#ff0000">PTR</font>}<sup>r</sup>
+<br /><div align="right"><font color="#007f00" size="1">Key: fPart()</font></div></font></td>
+<td>Returns the Nth nibble in an Application.  Since there are twice as many nibbles as bytes, make sure pointers are multiplied by 2.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;nib{<font color="#ff0000">PTR</font>}
+<br /><div align="right"><font color="#007f00" size="1">Key: fPart()</font></div></font></td>
+<td>Writes to the Nth nibble in RAM.  Since there are twice as many nibbles as bytes, make sure pointers are multiplied by 2.</td>
+</tr>
+<td><font face="Courier">Fill(<font color="#ff0000">PTR1</font>,<font color="#ff0000">SIZE</font>)</font></td>
+<td>The byte already at Ptr1 is copied to all the bytes after it until Size bytes have been filled with that value.  Zero is not a valid Size.</td>
+</tr>
+<tr>
+<td><font face="Courier">Copy(<font color="#ff0000">PTR1</font>,<font color="#ff0000">PTR2</font>,<font color="#ff0000">SIZE</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: conj()</font></div></font></td>
+<td>Size bytes starting from Ptr1 are copied to Ptr2 onwards.  Zero is not a valid Size.</td>
+</tr>
+<tr>
+<td><font face="Courier">Copy(<font color="#ff0000">PTR1</font>,<font color="#ff0000">PTR2</font>,<font color="#ff0000">SIZE</font>)<sup>r</sup>
+<br /><div align="right"><font color="#007f00" size="1">Key: conj()</font></div></font></td>
+<td>Size bytes ending at Ptr1 are copied to Ptr2 moving backwards.  Zero is not a valid Size.</td>
+</tr>
+<tr>
+<td><font face="Courier">Exch(<font color="#ff0000">PTR1</font>,<font color="#ff0000">PTR2</font>,<font color="#ff0000">SIZE</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: expr()</font></div></font></td>
+<td>Size bytes starting from Ptr1 are exchanged with Size bytes starting at Ptr2.  Zero is not a valid Size.</td>
+</tr>
+<tr>
+<td><font face="Courier">length(<font color="#ff0000">PTR</font>)</font></td>
+<td>Returns the number of bytes from the pointer to the next zero data element.</td>
+</tr>
+<tr>
+<td><font face="Courier">inData(<font color="#ff0000">BYTE</font>,<font color="#ff0000">PTR</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: inString()</font></div></font></td>
+<td>Searches for the byte in the zero-terminated data.  If found, it returns the position it was found in (starting at 1).  If not found, 0 is returned.</td>
+</tr>
+<tr bgcolor="#dfffbf">
+<td><font face="Courier">Equ&#9654;String(<font color="#ff0000">STR1</font>,<font color="#ff0000">STR2</font>)</font></td>
+<td>Checks if 2 null-terminated strings are equal.  Returns 0 if equal and non-zero otherwise.</td>
+</tr>
+<tr>
+<td><font face="Courier">SortD(<font color="#ff0000">PTR</font>,<font color="#ff0000">SIZE</font>)</font></td>
+<td>Sorts up to 256 bytes of data from largest to smallest starting at the pointed address.</td>
+</tr>
+</table>
+
+<br />
+<a name="Fmn"></a>
+<font color="#00007f"><b><big>External Variables</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Ans</font></td>
+<td>The expression becomes the "Ans" variable as an integer.  Throws an error if out of range.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;Ans</font></td>
+<td>The expression stores into the "Ans" variable as an integer.</td>
+</tr>
+<tr>
+<td><font face="Courier">GetCalc(<font color="#ff0000">PTR</font>)</font></td>
+<td>Finds the object who's name is pointed to and returns a pointer to the start of its data, or zero if it was archived or not found.</td>
+</tr>
+<tr>
+<td><font face="Courier">GetCalc(<font color="#ff0000">PTR</font>,<font color="#800080">FILE</font>)</font></td>
+<td>Attempts to create a file of the OS variable who's name is pointed to so it can be read from archive.  Returns 0 if the variable was not found or unarchived, and non-zero otherwise.</td>
+</tr>
+<tr>
+<td><font face="Courier">GetCalc(<font color="#ff0000">PTR</font>,<font color="#ff0000">SIZE</font>)</font></td>
+<td>Creates an OS variable who's name is pointed to in RAM and makes it Size bytes large.  Returns a pointer to the start of data, or zero if there was not enough RAM.  Overwrites existing variable, even if it was in archive.</td>
+</tr>
+<tr>
+<td><font face="Courier">UnArchive <font color="#ff0000">PTR</font></font></td>
+<td>Tries to unarchive the object who's name is pointed to.  Returns 1 if it could unarchive and 0 otherwise.  Gives a memory error if not enough RAM.</td>
+</tr>
+<tr>
+<td><font face="Courier">Archive <font color="#ff0000">PTR</font></font></td>
+<td>Tries to archive the object who's name is pointed to.  Returns 1 if it could archive and 0 otherwise.  Gives a memory error if not enough Flash Memory.</td>
+</tr>
+<tr>
+<td><font face="Courier">DelVar <font color="#ff0000">PTR</font></font></td>
+<td>Deletes the OS variable who's name is pointed to even if in archive.  Nothing happens if the variable does not exist.</td>
+</tr>
+<tr>
+<td><font face="Courier">input</font></td>
+<td>Prompts for an input string just like BASIC then returns a pointer to the string structure.  Don't forget, its a string of tokens, not characters.</td>
+</tr>
+<tr>
+<td><font face="Courier">float{<font color="#ff0000">PTR</font>}
+<br /><div align="right"><font color="#007f00" size="1">Key: iPart()</font></div></font></td>
+<td>Converts the float at the pointed address to an integer.  Floats are 9 bytes large.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;float{<font color="#ff0000">PTR</font>}
+<br /><div align="right"><font color="#007f00" size="1">Key: iPart()</font></div></font></td>
+<td>Converts the expression into a float and then stores it at the pointed address.  Floats are 9 bytes large.</td>
+</tr>
+</table>
+
+<br />
+<a name="Int"></a>
+<font color="#00007f"><b><big>Interrupts</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">FnInt(<font color="#007f7f">LBL</font>,<font color="#ff0000">FREQ</font>)</font></td>
+<td>Turns the subroutine into an interrupt and then turns interrupts on.  The frequency can be (fastest) 0, 2, 4, or 6 (slowest).  L2 is used for interrupt data so do not use L2 for storage when using interrupts.</td>
+</tr>
+<tr>
+<td><font face="Courier">FnOn</font></td>
+<td>Turns on interrupts.</td>
+</tr>
+<tr>
+<td><font face="Courier">FnOff</font></td>
+<td>Turns off interrupts.</td>
+</tr>
+<tr>
+<td><font face="Courier">Stop</font></td>
+<td>Stops execution until the next interrupt occurs.  Interrupts must be on or else the calculator will freeze.</td>
+</tr>
+<tr>
+<td><font face="Courier">LnReg</font></td>
+<td>Returns the calculator to regular interrupt mode.  MUST be called before exiting the program if using interrupts.</td>
+</tr>
+</table>
+
+<br />
+<a name="Lpt"></a>
+<font color="#00007f"><b><big>Link Port</big></b></font>
+<table border="2" bgcolor="#ffffff" width="100%" cellpadding="2">
+<tr bgcolor="#ffffaf">
+<td><b>Command</b></td>
+<td><b>Description</b></td>
+</tr>
+<tr>
+<td><font face="Courier">Port
+<br /><div align="right"><font color="#007f00" size="1">Key: ClrTable</font></div></font></td>
+<td>Returns the status of the link port as a number 0-3.</td>
+</tr>
+<tr>
+<td><font face="Courier"><font color="#ff0000">EXP</font>&rarr;Port
+<br /><div align="right"><font color="#007f00" size="1">Key: ClrTable</font></div></font></td>
+<td>Sets the link port to a given status with a number 0-3.  Must exit program with status 0 if changed!</td>
+</tr>
+<tr>
+<td><font face="Courier">Freq(<font color="#ff0000">WAVE</font>,<font color="#ff0000">TIME</font>)
+<br /><div align="right"><font color="#007f00" size="1">Key: SinReg</font></div></font></td>
+<td>Sound is played out of the link port.  Wave is inversely proportional to frequency and Time must be greater than Wave to hear anything.</td>
+</tr>
+<tr>
+<td><font face="Courier">Send(<font color="#ff0000">BYTE</font>,<font color="#ff0000">TIME</font>)</td>
+<td>Tries to send the byte across the linkport.  It will keep trying until the other calculator receives the byte or time runs out.  Returns 1 if the byte was sent successfully or 0 if it timed-out.  Time is in the order of microseconds.</td>
+</tr>
+<tr>
+<td><font face="Courier">Get</td>
+<td>Checks if the sender is trying to send anything.  Returns the byte if it was received or -1 if nothing was sent.  No waiting is done.</td>
+</tr>
+</table>
+
+<table border="2" bgcolor="#ffffff" cellpadding="2" align="right">
+<tr bgcolor="#dfffbf"><td>New In This Version</td></tr>
+<tr bgcolor="#ffdfdf"><td>Changed From Last Version</td></tr>
+<tr bgcolor="#ffffff"><td>Existing Command</td></tr>
+</table>
+<br /><br />
+<hr />
+<font size="2">Documentation for Axe Parser<br />
+Copyright (c) 2010 Kevin Horowitz<br /></font>
+<hr />
+</font>
+</body>
+</html>

@@ -1,0 +1,36 @@
+Program:	Super Mario World Editor v1.1
+Author:		Sam Heald (evil_sam@hotmail.com)
+Graphics:       Bill Nagel
+Version:	1.0
+System:		TI-83 (+) ION (or MirageOS)
+Released:	06-26-01
+
+About this Program:
+	This is the level editor for Super Mario ION. It will allow you to create and
+edit levelsets for that game. I hope that you find this program useful.
+
+Controls:
+MODE   = Menu
+2nd    = Place Block
+Alpha  = Select Block from Table
+DEL    = Remove Block
+Y=     = Place Enemy
+WINDOW = Previous Block
+ZOOM   = Next Block
+TRACE  = Shift Left 8 blocks (for easy shifting)
+GRAPH  = Shift Right 8 blocks (for easy shifting)
+XTO    = Insert Column
+STAT   = Remove Column
++/-    = Change Level
+CLEAR  = Exit
+
+Add/Remove Level is located in the Menu.
+
+To end a level, place a end bar as an enemy.
+
+Limitations:
+There are some limitations inherent to the game...
+	1)You may only place 1 enemy per column (this ensure that there won't be too many
+		enemies on the screen)
+	2)Levels can be at most 128 in width
+	3)You can only ADD and REMOVE levels from the end of your levelset

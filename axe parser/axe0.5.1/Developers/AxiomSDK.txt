@@ -1,0 +1,175 @@
+;#######################################################################;
+;       ___      ___   ___  __    ______   .___  ___.     ______.       ;
+;      /   \     \  \ /  / |  |  /  __  \  |   \/   |    /      |       ;
+;     /  ^  \     \  '  /  |  | |  |  |  | |  \  /  |   |   (---`       ;
+;    /  /_\  \     >   <   |  | |  |  |  | |  |\/|  |    \   \          ;
+;   /  _____  \   /  .  \  |  | |  `--'  | |  |  |  | .---)   |         ;
+;  /__/     \__\ /__/ \__\ |__|  \______/  |__|  |__| |______/          ;
+;                                                                       ;
+;                The Assembly SDK for Axe programmers                   ;
+;                         By Kevin Horowitz                             ;
+;                       Last revision:  1.0.0                           ;
+;                                                                       ;
+;  This template will make it easy to implement real assembly commands  ;
+;into Axe Parser so that they can be used just like the native commands ;
+;that come with the App.                                                ;
+;                                                                       ;
+;#######################################################################;
+
+;###################
+;#  Library header #
+;###################
+
+;You should include "Axe.inc" in your axiom because it contains a lot of useful
+;definitions to aid in Axiom development.
+
+#include "Axe.inc"
+
+;All Axioms must start with $DE,$C0:
+
+.dw $C0DE
+
+;####################
+;#  Command Fields  #
+;####################
+
+;____FIELD 1____
+;Description:     Size of the command
+;Size:            2 bytes
+;Explanation:     A zero here signals the end of the Axiom.
+
+.dw $0000
+
+;____FIELD 2____
+;Description:     Shell compatibility
+;Size:            1 byte
+;Bits:            bit 0 ==> Nostub ASM Compatible
+;                 bit 1 ==> Ion Compatible
+;                 bit 2 ==> MirageOS Compatible
+;                 bit 3 ==> DoorsCS Compatible
+;                 bit 4 ==> Application Compatible
+
+.db $00
+
+;____FIELD 3____
+;Description:     Token to match
+;Size:            2 bytes
+;Explanation:     If its only a 1 byte token, make the second byte 0.
+;                 If its a 2 byte token, the prefix token should come first.
+;                 Leave $0000 if this can only be called from other commands.
+;                 Leave $FFFF if this command is strictly data (no auto-replacements).
+
+.db $00,$00
+
+;____FIELD 4____
+;Description:     Command type
+;Size:            1 byte
+;Bits:            bit 0 ==> Subroutine instead of inline routine
+;                 bit 1 ==> Command requires the r modifier
+;                 bit 2 ==> Command requires the rr modifier
+;                 bit 3 ==> Additional argument comes before a store token
+
+
+.db 0
+
+;____FIELD 5____
+;Description:     Number of formal arguments (items in parenthesis)
+;Size:            1 byte
+
+.db 0
+
+;____FIELD 6____
+;Description:     Routine
+;Size:            --Unlimited--
+;Explanation:
+;
+;    For expressions with arguments, the last argument is always in HL.  All
+;other arguments are pushed onto the stack with the second-to-last argument
+;at the front of the stack and the first argument at the end of the stack.
+;So if you have N arguments, there should be N-1 items on the stack.  But don't
+;forget, if its a subroutine, the return address is still at the front of the
+;stack and needs to be pushed back eventually.
+;
+;    Routines should start with their origin at address $0000.  This is because
+;Axe will automatically replace all jumps and calls to address between $0000
+;to $3EFF with the relative positions regardless of where the subroutine is added.
+;The addresses between $3F00 and $3FFF get replaced by the corresponding Axe
+;subroutines defined by the include file.
+;
+;    16 bit load instructions do not automatically get replaced with relative
+;labels.  Instead, you have to prefix them with $7F.  This tells Axe to do the
+;replacement, so it will ignore this byte.  Make sure you update the origin to
+;compensate for this effect.  This does count as a byte in the size of the program
+;though.  I have included a macro to help with this.
+;
+;    You will need an assembler that can handle moving origins to easily use
+;these automatic replacements.  Some examples are SPASM's .org directive or
+;Brass's .relocate directive.  TASM will not work since it's .org does not behave
+;the correct way.
+
+.org $0000
+Insert_Your_Routine
+
+;##################
+;#  And repeat... #
+;##################
+
+;Repeat this pattern (not including the library header) until all your routines
+;are completed.
+
+;################################
+;#  Frequently Asked Questions  #
+;################################
+;
+;How do I compile the code?
+;
+;  The code must be an appvar in ram or archive.  However, if you have it as a
+;  program in ram, Axe will kindly convert it to an appvar for you.  Do NOT
+;  include the assembly program header ($6DBB). Always use the Axe Library header
+;  ($C0DE) instead.
+;
+;How does Axe do output?
+;
+;  The HL register is always used as the output.
+;
+;Can I redefine existing Axe commands?
+;
+;  No. The parser only looks through the Axioms once all of the original commands
+;  have already been searched through.
+;
+;What if another library uses the same token as I'm using?
+;
+;  Similar explanation as above.  The commands are searched for in the order that
+;  the Axioms were defined in the program.  So if someone else uses the same
+;  token, and their Axiom was defined before yours, then their command is found
+;  first.  But if the programmer switches the order of the Axioms, yours will be
+;  found first.
+;
+;What ram areas are safe to use?  Can I use shadow registers?
+;
+;  If at all possible, I would recommend to not use ANY ram for your subroutines.
+;  But, if its absolutely necessary, I would recommend using the OP1-OP6 area as
+;  that's the location I use for extremely temporary storage.  Make sure to warn if
+;  your library commands are interrupt compatible or not.  If they use temporary
+;  storage or shadow registers, they are most likely not.
+;
+;Can I make a command have a different routine for different shells?
+;
+;  Yes.  Simply define the routines using the same token values but with different
+;  shell compatibility field.
+;
+;Are there any instructions I can't use?
+;
+;  Do NOT use the useless "ld a,a" instruction.  If you need a no-op, use a nop.
+;  This is used to indicate the next instruction is a replacement instruction.
+;  I would also recommend to not use any undocumented instruction because not all
+;  emulators support these instructions, most notably the one built into the
+;  TI-NSpire.
+;
+;Can you give me some limits?
+;
+;  Unlimited command sizes.
+;  The maximum number of arguments is 6.
+;  The maximum number of commands in a single Axiom is 32.
+;  Up to 5 Axiom libraries can be included in a single program.
+;  Up to 10 Axe Call replacements can be made per command (recursive limit)

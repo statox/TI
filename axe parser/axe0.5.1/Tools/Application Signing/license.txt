@@ -1,0 +1,132 @@
+Wabbitsign
+Intial release March 1, 2006
+Created by Spencer Putt and James Montelongo
+Email@:
+blattamuscosa@yahoo.com
+James20@gmail.com
+Site: www.revsoft.org
+
+
+	Wabbitsign is command line program that allows you to convert TI-83 Plus series applications in binary format into signed 8xk applications and eases the process of creating multi-paged apps. Wabbitsign was created to be quick, small, and (somewhat) portable.
+
+Usage:
+Wabbitsign takes two arguments, the first being an input binary file and the second an output file.
+
+	wabbit infile.bin outfile.8xk
+
+Above, infile.bin is the assembled application in binary format. Each page must be filled with 16384 bytes, except, however, for the last page which is not required to be filled. The last page may not exceed 16288 bytes, being that the last 96 bytes are used for the APP signature.  This is required for any APP signer.
+
+Outfile.8xk is simply the file name you wish to call your signed APP, the actual APP name should be specified in the APP header.
+
+Additionally, by specifying a one of the following extensions on the output file, wabbitsign will format the output accordingly:
+	8XK	- will generate a signed application
+	8XP	- program for TI-83 (84) Plus,
+	86P	- program for TI-86
+	86S	- string for TI-86
+	85P	- program for TI-85
+	85S	- string for TI-85
+	83P	- program for TI-83
+	82P	- program for TI-82
+	73P	- program for TI-73
+
+Notes:
+ * Wabbitsign - checks the header of your app to see if it's correct (e.g. fixing page number, app size).
+              - requires that you specify APP program type as 0104, freeware.
+              - does not use external key files, so you don't need to hang onto the 0104.key file any longer.
+ * Intel hex is not acceptable for an input file, it must be in binary format.
+
+Creating an APP:
+
+1. TASM
+To build a single page app in tasm, you may code just as you would normally but you must not exceed 16288 bytes. Do the following at the command line to assemble your code into binary format.
+
+	tasm -80 -i -b infile.z80 outfile.bin
+
+2. Spencer's Assembler
+To build a multi-paged app using Spencer's assembler, You must only fill the remaining data on a page up and set the origin at the start of every page. The last page should not be filled. You may find Spencer's Assembler here: http://www.revsoft.org/phpBB2/viewtopic.php?t=219
+
+Example source code for Spencer's assembler:
+
+;---------PAGE 1-------------
+	.org $4000
+#define bcall(xxxx)  rst 28h  \ .dw xxxx
+#define bjump(label) call 50h \ .dw label
+_ClrLCDFull		.equ 4540h
+_GetKey		.equ 4972h
+_JForceCmdNoChar	.equ 4027h
+_PutC			.equ 4504h
+curRow		.equ 844Bh
+
+	.db $80,$0F		;Field: Program length
+	.db 0,0,0,0		;--altered by wabbitsign
+	.db $80,$12		;Field: Program type
+	.db $01,$04		;--MUST BE FREE
+	.db $80,$21		;Field: App ID
+	.db $01
+	.db $80,$31		;Field: App Build
+	.db $01
+	.db $80,$48		;Field: App Name
+	.db "MY APP  "
+	.db $80,$81		;Field: App Pages
+	.db $03		;--altered by wabbitsign
+	.db $80,$90		;No default splash screen
+	.db $03,$26,$09,$04,$04,$6f,$1b,$80,$02,$0d,$40,$a1
+	.db $6b,$99,$f6,$59,$bc,$67,$f5,$85,$9c,$09,$6c,$0f
+	.db $b4,$03,$9b,$c9,$03,$32,$2c,$e0,$03,$20,$e3,$2c
+	.db $f4,$2d,$73,$b4,$27,$c4,$a0,$72,$54,$b9,$ea,$7c
+	.db $3b,$aa,$16,$f6,$77,$83,$7a,$ee,$1a,$d4,$42,$4c
+	.db $6b,$8b,$13,$1f,$bb,$93,$8b,$fc,$19,$1c,$3c,$ec
+	.db $4d,$e5,$75
+	.db $80,$7F
+	.dw 0,0,0,0,0,0,0,0,0,0
+
+Start:
+	bcall(_ClrLCDFull)
+	ld de,0
+	ld (curRow),de
+	ld hl,Text
+	call appputs
+	bcall(_GetKey)
+	bjump(_JForceCmdNoChar)
+
+appputs:
+	ld a,(hl)
+	inc hl
+	or a
+	ret z
+	bcall(_PutC)
+	jr appputs
+
+
+Text:
+ .db "Hello World!",0
+
+.block $8000-$		;fill remaining data
+
+;---------PAGE 2-------------
+.org $4000
+	xor a
+	ret
+;some more code
+.block $8000-$		;fill remaining data
+
+;---------PAGE 3-------------
+.org $4000
+	ld a,3
+	ld c,a
+	ret
+;some more code
+;The block directive is not needed here because it is the last page.
+
+
+To build a multipaged app using Brass, you can use the page directives. However, please see Brass's documentation on this. Brass is located here. http://benryves.com/bin/brass/
+
+
+If any bugs are found please report them on either the RevSoft message board or to emails presented above.
+Niether Spencer Putt nor James Montelongo are liable for any damages that may happen during the use of these program. Use at your own risk.
+You are allowed to redistribute the Wabbitsign executable freely unmodified. Please keep this readme included with it.
+
+
+
+Special thanks to bruntfuse, for 86 help and bug finding.
+

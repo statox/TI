@@ -1,0 +1,202 @@
+================================================
+List of expressions with automatic optimizations
+================================================
+
+Use this as a guide to help you choose small and
+fast constants to use in different opperations.
+
+
+Expression______Bytes_________________
+
++VAR            5
++CONST          4
++1              1
++2              2
++3              3
++254            3
++255            2
++256            1
++257            2
++258            3
++510            4
++511            3
++512            2
++513            3
++514            4
++767            4
++768            3
++769            4
++1024           4
+
+-VAR            7
+-CONST          4
+-1              1
+-2              2
+-3              3
+-254            3
+-255            2
+-256            1
+-257            2
+-258            3
+-510            4
+-511            3
+-512            2
+-513            3
+-514            4
+-767            4
+-768            3
+-769            4
+-1024           4
+
+*VAR            7 + sub_mul
+*CONST          6 + sub_mul
+*-1             6
+*2              1
+*3              4
+*4              2
+*5              5
+*6              5
+*7              6
+*8              3
+*9              6
+*10             6
+*12             6
+*16             4
+*32             5
+*64             5
+*128            5
+*255            6
+*256            3
+*257            3
+*258            4
+*260            5
+*264            6
+*512            4
+*513            6
+*514            4
+*516            5
+*520            6
+*768            6
+*1024           5
+*1028           5
+*1032           6
+*2048           6
+*2056           6
+*4096           5
+*8192           5
+*16384          5
+*32768          6
+
+/VAR            7 + sub_div
+/CONST          6 + sub_div
+/2              4
+/10             3
+/128            5
+/256            3
+/512            5
+/32768          5
+
+//VAR           7 + sub_div + sub_Sdiv
+//CONST         6 + sub_div + sub_Sdiv
+//2             4
+//64            6
+//128           4
+//256           5
+//512           5
+//16384         6
+//32768         3
+
+^VAR            7 + sub_mod
+^CONST          6 + sub_mod
+^2              5
+^4              6
+^8              6
+^16             6
+^32             6
+^64             6
+^128            4
+^256            2
+^512            4
+^1024           4
+^2048           4
+^4096           4
+^8192           4
+^16384          4
+^32768          2
+
+=VAR            12
+=CONST          11
+=SHORT          9
+=NSHORT         9
+=-512           9
+=-256           8
+=-1             8
+=0              7
+=1              7
+=2              8
+=256            8
+=512            9
+
+=/=VAR          12
+=/=CONST        11
+=/=SHORT        9
+=/=NSHORT       9
+=/=-512         9
+=/=-256         8
+=/=-2           8
+=/=-1           7
+=/=0            7
+=/=1            8
+=/=256          8
+=/=512          9
+
+<<VAR           16
+<<CONST         15
+<<0             5
+
+>=>=VAR         16
+>=>=CONST       15
+>=>=0           4
+
+eVAR            17
+e0              5
+e1              6
+e2              7
+e3              7
+e4              7
+e5              7
+e6              7
+e7              6
+
+eeVAR           16
+ee0             5
+ee1             6
+ee2             7
+ee3             7
+ee4             7
+ee5             7
+ee6             7
+ee7             6
+ee8             5
+ee9             6
+ee10            7
+ee11            7
+ee12            7
+ee13            7
+ee14            7
+ee15            6
+
+Subroutine______Bytes_________________
+
+sub_mul         24
+sub_div         26
+sub_sdiv        38
+sub_mod         24
+
+SHORT is a number between 0 and 255 inclusive
+NSHORT is a number between -1 and -256 inclusive
+CONST is any number
+=/= is a "not equal sign"
+>=  is a "greater than or equal sign"
+<=  is a "less than or equal sign"
+[] indicates the 16-bit operation

@@ -1,0 +1,15 @@
+This is a BETA verison.  Its not yet complete.  Neither is the tutorial.
+If you're not satisfied and aren't able to program becasue of this,
+then I apploigize.  You'll definately need to know some BASIC in order
+to better understand the language.  They share similar syntax.
+
+Another thing, becasue the project is still in development, it is
+absolutely possible that some syntax could change from one version to
+the next.  I'm trying my hardest to make sure this does not happen.
+
+A third thing, I can't stress this enough.  You NEED to make backups
+and archive your stuff before using the parser, esspecially your source
+code.  I can almost garentee that you will get several accidental RAM
+clears from your code and I can't be held liable for your loss of data.
+
+Not to discourage anyone though, it really is a fun tool :)

@@ -1,0 +1,1399 @@
+;;
+;; TI83+ Slimeball by Joakim Ahnfelt-Rønne, 2003
+;; Email: joakimar@c.dk
+;;
+;; This game was programmed in 4 days: The 16th May to the 19th May, 2003.
+;; Before that, I spend two days on finding/downloading z80 tutorials,
+;; as I knew no z80 and almost no other assembly. Proud? Hell yeah :P
+;;
+;; I later added stuff and fixed bugs. v1.0 is the four-day version.
+;;	v1.0	- Two player mode, text messages, graphical bars.
+;;	v1.1	- Fixed a point that made the ball pass the left player sometimes.
+;;	v1.2	- Added an ai player :D Easier than I feared...
+;;
+;; This game needs the Ion shell or compatible to run.
+;; Download this from ie. in the www.ticalc.org file archives.
+;;
+;; To play the game, simply send the .83p file to your calculator if you
+;; have a graph link or .8xp if you have a TI83+. The game has never been
+;; tested on a TI83, but it should work. If not, please contact me.
+;;
+;; This code is for your pleasure. There's some parts -
+;; especially the collision, that even I can't read, but
+;; you're always welcome to ask me ;)
+;; So, if you improve or change this game, please send
+;; me a copy and give some credit. Thank you :D
+;; This was the first peice of z80 code I ever wrote, and
+;; to be honest, I'm quite satisfied with the outcome.
+;; However, the last part of the development scared me
+;; quite a bit, so I might not do another calc game for
+;; a couple of months, years, whatever...
+;; You can freely use all of this, but it's all on your
+;; very own risk. I cannot be hold liable for any damage
+;; that this code / this game causes. Even though this
+;; should never happen, I cannot guarentee anything, so
+;; if you don't trust me to write safe code, don't run the
+;; game - simple as that.
+;;
+;; Movement:	Left player:	Right player:
+;;  Go left	 1 (one)	 arrow left
+;;  Go right     3 (three)       arrow right
+;;  Jump         5 (five)	 arrow up
+;; To exit press [mode], and after winning press [2nd] to restart.
+;; Also, when starting a new game, [APLHA] will make the right player ai controlled,
+;; while [2nd] will make it a human player (with the already descriped keys).
+;;
+;; Anyways, if you want to view the source, use a fixed width font with 8 char tabs.
+;;
+;; Thanks goes out to
+;;	Jacob Furu		For providing me with the idea.
+;;	A. Nygaard (aka Dino) 	For intensive testing ;)
+;;	Morten (aka Morton)	For suggesting two player link mode.
+;;      Joe Wingbermuehle	For making Ion for the TI83/TI83+.
+;;	The VirtualTI dev team	For making a great TI83+ emulator.
+;;	Charlie Adams		For fixing the bug that made TI Slimeball
+;;				invisible to MirageOS.
+;;	Scott Ad		For a couple of suggestions.
+;;	Richard H. (aka Rico)	For some promotion of my game :)
+;;	Those who wrote:	- The "TI-82 ASM Programming Guide"
+;;				- The "ASM83 Guru"
+;;                              - The "TI-83 Plus Assembly In 28 Days"
+;;				All great tutorials which helped me learn z80.
+;;	"MovAX"			For making the devpac83 tool :)
+;;	Texas Instruments	...well, they made the damn calculator...
+;;	And not you		Heck, why should I thank you for playing
+;;				my game? I can do that when I release
+;;				something you pay for :P
+;;
+
+#define left_xc 16		; because of a stupid bug,
+				; when left_x < 16...
+
+;==========================================================
+;	JFP
+;==========================================================
+;	The Joakim's Fixed Point math is a system I
+;	invented to get rid of the slow and hard to use
+;	floating points. Basically, jfp = decimal*16.
+;       	jfp	decimal
+;	        0	0.00
+;		4	0.25
+;		8	0.50
+;		12	0.75
+;		16	1.00
+;		20	1.25
+;		etc, etc...
+;	It shifts bc right 4 times to divide by 16 fast.
+;	If you want it to round right, add 8 to bc before
+;	shifting and you might wanna change the srl to sra
+;==========================================================
+
+; shift bc right (fast integer divide by 2).
+; kills b,c
+#define SRA_BC srl b \ rr c
+
+; convert JFP to an integer in bc by dividing by 16. (Removes fractional part)
+; kills b,c
+#define JFP_TO_INT(xxxx) ld bc,(xxxx) \ SRA_BC \ SRA_BC \ SRA_BC \ SRA_BC
+
+
+;==========================================================
+;	Header
+;==========================================================
+        .nolist
+        #include "ion.inc"
+        .list
+
+#ifdef 	TI83P
+        .org 	progstart-2
+        .db 	$BB,$6D
+#else
+        .org 	progstart
+#endif
+
+        ret
+        jr nc,main
+
+title:	.db 	"TI Slimeball by Joakim",0
+
+
+;==========================================================
+;	Variables
+;==========================================================
+#define	storage	sram		; 768 bytes for the variables
+left_x		=storage+0	; (word) left player horizontal position
+left_y		=storage+2	; (word) left player vertical position
+left_ys		=storage+4	; (word) left player vertical speed
+left_score	=storage+6	; (byte) left player's score
+left_type	=storage+7	; (byte) 1=human 2=computer
+right_x		=storage+8	; (word) right player horizontal position
+right_y		=storage+10	; (word) right player vertical position
+right_ys	=storage+12	; (word) right player vertical speed
+right_score	=storage+14	; (byte) right player's score
+right_type	=storage+15	; (byte) 1=human 2=computer
+ball_x		=storage+16	; (word) ball horizonal position
+ball_y		=storage+18	; (word) ball vertical position
+ball_xs		=storage+20	; (word) ball horizonal speed
+ball_ys		=storage+22	; (word) ball vertical speed
+text_pointer	=storage+24	; (word) pointer to current text
+game_flags	=storage+26	; (byte) game flags
+foo_1		=storage+27	; (word) temporary value
+
+
+;==========================================================
+;	Main code
+;==========================================================
+main:
+	;; text setup:
+        set textInverse,	(IY+textFlags)	;white text on black
+        res textEraseBelow,	(IY+textFlags)	;don't erase under text
+        res textWrite,		(IY+sGrFlags)	;write to screen
+
+	;; zero out game flags:
+	xor a                   ; Bits: (0=endgame) (1=restartgame) (2=...) (3=temporary)
+	ld (game_flags),a       ; (4=...) (5=...) (6=...) (7=...)
+
+	;; object positions:
+        ld bc,256+left_xc*16*2	;JFP: bc = 256/16 = 32
+        ld (left_x), bc		;left_x = bc
+        ld bc,768		;JFP: 768/16 = 48
+        ld (left_y), bc         ;left_y = bc
+        ld bc,10		;bc = 10 (human (1),(3),(5))
+        ld (left_type),bc	;left_type=bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (left_ys), bc	;left_ys = bc
+        ld a,4          	;a = 4
+        ld (left_score),a	;left_score = a
+
+        ld bc,1280-256		;JFP: (1280-256)/16 = 64
+        ld (right_x), bc	;right_x = bc
+        ld bc,768		;JFP: bc = 768/16 = 48
+        ld (right_y), bc        ;right_y = bc
+        ld bc,10		;bc = 10 (human (left),(right),(up))
+        ld (right_type),bc	;right_type=bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (right_ys), bc       ;right_ys = bc
+        ld a,4          	;a = 4
+        ld (right_score),a	;right_score = a
+
+        ld bc,1280-256+80	;JFP: (1280-256+80)/16 = 69
+        ld (ball_x), bc		;ball_x = bc
+        ld bc,256		;JFP: bc = 256/16 = 32
+        ld (ball_y), bc		;ball_y = bc
+        ld bc,0			;JFP: 0/16 = 0
+        ld (ball_xs), bc	;ball_xs = bc
+        ld bc,0			;JFP: bc = -32/16 = -2
+        ld (ball_ys), bc	;ball_ys = bc
+        ld b,2                  ;\_ a=rndint(0,1)
+        call ionRandom		;/  b=0
+        cp 0                    ;compare with 0
+        jr nz,_right_serve	;if random number is false then
+        ld bc,256+80		;  JFP: (256+80)/16 = 21 or something
+        ld (ball_x), bc		;  ball_x = bc
+_right_serve:                   ;endif
+
+        ;; start screen:
+        call draw_bg		;Draw background
+        call draw_net		;Draw net
+        call draw_bars		;Draw bars
+	ld ix,control_sprite	;point ix to control sprite
+        ld a,58                 ;set horizontal sprite coordinate
+        ld l,40                 ;set vertical sprite coordinate
+	ld bc,$0A04		;height=10, width=4*8=32
+	call ionLargeSprite	;draws left player and points ix to the next sprite
+        call ionFastCopy	;Display screen
+        ld hl,start_text	;\_ point to start text
+        ld (text_pointer),hl    ;/
+        call draw_text		;Draw text
+_next_key_0:
+        bcall(_GetCSC)          ;get key scan code
+        cp $37                  ;if mode is pressed then
+        jp z,exit_game          ;  exit the game: endif
+        cp $30                  ;if alpha is pressed then
+        jr nz,_no_Alpha_0       ;  right type is ai
+        ld a,20			;  bc = 20 (ai)
+        ld (right_type),a	;  right_type=bc
+        jr main_loop            ;endif
+_no_Alpha_0:
+        cp $36                  ;if 2nd is pressed then
+        jr nz,_no_2nd_0         ;  right type is human
+        ld a,10			;  bc = 10 (human (left),(right),(up))
+        ld (right_type),a	;  right_type=bc
+        jr main_loop            ;endif
+_no_2nd_0:
+	jr _next_key_0
+
+
+        ;; main loop:
+main_loop:
+	call control_left	;Control left player
+	call control_right	;Control right player
+	call move_ball		;Move ball
+        call draw_bg		;Draw background
+        call draw_players	;Draw players
+        call draw_ball		;Draw ball
+        call draw_net		;Draw net
+        call draw_bars		;Draw bars
+        call ionFastCopy	;Display screen
+
+	ld a,(game_flags)	;\
+	bit 0,a                 ; >- if game_flag(0) = true then exit game
+	jr nz,exit_game         ;/
+	ld a,(game_flags)	;\
+	bit 1,a                 ; >- if game_flag(1) = true then restart game
+	jp nz,main	        ;/
+	xor a                   ;a=0          \_ else, clear
+	ld (game_flags),a	;game_flags=a /  game flags
+
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%10111111		;a=group with mode
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 6,a			;bit 6 = mode
+        jr nz,main_loop		;if pressed then exit
+exit_game:
+
+	bcall(_clrlcdf)		;clear the screen
+	call clear_keys		;clear the key buffer
+
+	res textInverse,(IY+textFlags)	;don't draw inverse text anymore
+        halt                    ;5ms delay
+        ret                     ;Return to os
+
+;==========================================================
+;	Procedures
+;==========================================================
+;	draw_players
+; 	      -    in:	left_x,left_y,right_x,right_y
+;	      -   out:	draws both players on the buffer
+;	      - kills:	all registers,af'
+;==========================================================
+; 	draw_ball
+; 	      -    in:	ball_x,ball_y
+;	      -   out:	draws the ball on the buffer
+;	      - kills:	all registers
+;==========================================================
+; 	draw_bg
+; 	      -    in:	none
+;	      -   out:	draws the background on the buffer
+;	      - kills:	all registers
+;==========================================================
+; 	draw_pattern
+; 	      -    in:	hl=where to start drawing
+;			a=8bit pattern to draw
+;			b=number of patterns to draw
+;	      -   out:	draws the background b times to
+;			the right/bottom of hl
+;	      - kills:	b,h,l
+;==========================================================
+; 	draw_pattern_dec
+; 	      -    in:	hl=where to start drawing
+;			a=8bit pattern to draw
+;			b=number of patterns to draw
+;	      -   out:	draws the background b times to
+;			the left/top of hl
+;	      - kills:	b,h,l
+;==========================================================
+; 	draw_score
+; 	      -    in:	left_score,right_score,text_pointer
+;	      -   out:	draws a graphical representation
+;			of the players score on the screen
+;			and writes the current comment on
+;			a black bar in the bottom
+;	      - kills:	a,b,h,l
+;==========================================================
+;	clear_keys
+; 	      -    in:	none
+;	      -   out:	clears keypad buffer
+;	      - kills:	a
+;==========================================================
+;	get_key
+; 	      -    in:	a=keygroup,b=key
+;	      -   out:	zero flag is set if key is pressed
+;	      - kills:	a,c,zero flag
+;==========================================================
+draw_players:
+	ld ix,left_sprite	;point ix to left player sprite
+	JFP_TO_INT(left_x)     	;round left_x into an integer
+        ld a,c                  ;set horizontal sprite coordinate
+        sub left_xc		;stupid bug correction
+        JFP_TO_INT(left_y)   	;round left_y into an integer
+        ld l,c                  ;set vertical sprite coordinate
+	ld bc,$0802		;height=8, width=2*8=16
+	call ionLargeSprite	;draws left player and points ix to the next sprite
+	JFP_TO_INT(right_x)     ;round right_x into an integer
+        ld a,c                  ;set horizontal coordinate
+        JFP_TO_INT(right_y)   	;round right_y into an integer
+        ld l,c                  ;set vertical coordinate
+	ld bc,$0802		;height=8, width=2*8=16
+	call ionLargeSprite	;draws right player
+	ret			;return
+
+
+draw_ball:
+	ld ix,ball_sprite	;point ix to ball sprite
+	JFP_TO_INT(ball_x)     	;round ball_x into an integer
+        ld a,c                  ;set horizontal sprite coordinate
+        JFP_TO_INT(ball_y)   	;round ball_y into an integer
+        ld l,c                  ;set vertical sprite coordinate
+        ld b,5                  ;set height of sprite to 5
+        call ionPutSprite	;draws right player
+        ret
+
+
+draw_net:
+	ld ix,wall_sprite	;point ix to wall/net sprite
+        ld a,46                 ;set horizontal sprite coordinate
+        ld l,44                 ;set vertical sprite coordinate
+        ld b,12                 ;set height of sprite to 5
+        call ionPutSprite	;draws right player
+        ret
+
+
+draw_bg:
+	bcall(_cleargbuf) 	;Clear buffer
+	ld a,%11111111		;pattern is 8 black pixels in a row
+	ld b,96                 ;we need 96 times 8 pixels again
+	ld hl,gbuf+672          ;point to buffer end
+	call draw_pattern       ;draw horizonal lines
+	ret
+
+
+draw_pattern:
+	ld (hl),a               ;draw pattern
+	inc hl                  ;increase memory position by one byte
+	djnz draw_pattern	;while b is not 0, decrease b and loop
+	ret
+
+
+draw_pattern_dec:
+	ld (hl),a               ;draw pattern
+	dec hl                  ;decrease memory position by one byte
+	djnz draw_pattern_dec	;while b is not 0, decrease b and loop
+	ret
+
+
+draw_bars:
+	;; top bar:
+	ld a,%11111111		;pattern is 8 black pixels in a row
+	ld b,96                 ;we need 96 times 8 pixels
+	ld hl,gbuf		;point to the screen start
+        call draw_pattern	;draw horizonal lines
+_show_l_score:
+	ld a,(left_score)       ;prepare to loop left_score times
+	cp 0                    ;\_ if left_score = 0 then
+	jp z,_show_r_score	;/  don't draw it at all
+        ld b,a			;use b as counter
+        ld a,%11100001		;top pattern
+        ld hl,gbuf+24		;point to line 3 on the screen
+        call draw_pattern	;draw pattern
+	ld a,(left_score)       ;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%11001110          ;middle pattern
+        ld hl,gbuf+36		;point to line 4 in screen
+        call draw_pattern	;draw pattern
+	ld a,(left_score)       ;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%11011100          ;middle pattern
+        ld hl,gbuf+48		;point to line 5 in screen
+        call draw_pattern	;draw pattern
+	ld a,(left_score)       ;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%11100001          ;bottom pattern
+        ld hl,gbuf+60		;point to line 4 in screen
+        call draw_pattern	;draw pattern
+_show_r_score:
+	ld a,(right_score)	;prepare to loop left_score times
+	cp 0                    ;\_ if right_score = 0 then
+	ret z			;/  don't draw it at all
+        ld b,a			;use b as counter
+        ld a,%10000111		;top pattern
+        ld hl,gbuf+35		;point to last byte, line 3 in screen
+        call draw_pattern_dec	;draw pattern
+	ld a,(right_score)	;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%01110011          ;middle pattern
+        ld hl,gbuf+47		;point to last byte, line 4 in screen
+        call draw_pattern_dec	;draw pattern
+	ld a,(right_score)      ;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%00111011          ;middle pattern
+        ld hl,gbuf+59		;point to last byte, line 5 in screen
+        call draw_pattern_dec	;draw pattern
+	ld a,(right_score)      ;prepare to loop left_score times
+        ld b,a			;use b as counter
+        ld a,%10000111          ;bottom pattern
+        ld hl,gbuf+71		;point to last byte, line 4 in screen
+        call draw_pattern_dec	;draw pattern
+        ret
+
+
+draw_text:
+	ld hl,(text_pointer)	;retrieve text pointer
+	ld a,1			;a=1
+	ld (PENCOL),a 		;set pen column to a
+	ld a,57			;a=57
+        ld (PENROW),a 		;set pen row to a
+        bcall(_vputs)    	;display small text
+        ret
+
+
+score_point:
+	ld hl,51*16             ;\_ put ball to the ground
+	ld (ball_y),hl          ;/  (eg. not under the ground)
+        JFP_TO_INT(ball_x)	;bc=int(ball_x)
+        ld a,c			;a=c
+        cp 46			;compare with 46
+        jp nc,_left_score	;if a < 46 then
+	ld a,(right_score)      ;\
+	inc a                   ; >- increase right_score
+	ld (right_score),a      ;/
+	ld a,(left_score)       ;\
+	dec a                   ; >- decrease left_score
+	ld (left_score),a       ;/
+	jp z,win_game_right	;and jump to win_game if zero
+        call pause_game		;Pause game
+        ld bc,256+left_xc*16*2	;JFP: bc = 256/16 = 32 + stupid bug correction
+        ld (left_x), bc		;left_x = bc
+        ld bc,768		;JFP: 768/16 = 48
+        ld (left_y), bc         ;left_y = bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (left_ys), bc	;left_ys = bc
+        ld bc,1280-256		;JFP: (1280-256)/16 = 64
+        ld (right_x), bc	;right_x = bc
+        ld bc,768		;JFP: bc = 768/16 = 48
+        ld (right_y), bc        ;right_y = bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (right_ys), bc        ;right_ys = bc
+        ld bc,1280-256+80	;JFP: (1280-256+80)/16 = 69
+        ld (ball_x), bc		;ball_x = bc
+        ld bc,256		;JFP: bc = 256/16 = 32
+        ld (ball_y), bc		;ball_y = bc
+        ld bc,0			;JFP: 0/16 = 0
+        ld (ball_xs), bc	;ball_xs = bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (ball_ys), bc	;ball_ys = bc
+        ld b,3        		;\_ let ion generate a
+        call ionRandom          ;/  random number between 0 and 2
+        sla a                   ;\
+        sla a                   ; \
+        sla a                   ;  >- b=b*32
+        sla a                   ; /
+        sla a                   ;/
+        ld d,0			;\_ de=b
+        ld e,a                  ;/
+        ld hl,right_score_text	;\
+        add hl,de               ; >- text_pointer=right_scor_text+rndint(0,2)*32
+        ld (text_pointer),hl    ;/
+        call draw_text		;Draw text
+_next_key_1:
+        bcall(_GetCSC)		;\
+        cp 0			; >- wait for keypress
+	jr z,_next_key_1	;/
+        ret			;.
+_left_score:			;else
+	ld a,(left_score)       ;\
+	inc a                   ; >- increase left_score
+	ld (left_score),a       ;/
+	ld a,(right_score)      ;\
+	dec a                   ; >- decrease right_score
+	ld (right_score),a      ;/
+	jp z,win_game_left	;and jump to win_game if zero
+        call pause_game		;Pause game
+        ld bc,256+left_xc*16*2	;JFP: bc = 256/16 = 32 + stupit bug correction
+        ld (left_x), bc		;left_x = bc
+        ld bc,768		;JFP: 768/16 = 48
+        ld (left_y), bc         ;left_y = bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (left_ys), bc	;left_ys = bc
+        ld bc,1280-256		;JFP: (1280-256)/16 = 64
+        ld (right_x), bc	;right_x = bc
+        ld bc,768		;JFP: bc = 768/16 = 48
+        ld (right_y), bc        ;right_y = bc
+        ld bc,0			;JFP: bc = 0/16 = 0
+        ld (right_ys), bc       ;right_ys = bc
+        ld bc,256+80		;JFP: (256+80)/16 = 37
+        ld (ball_x), bc		;ball_x = bc
+        ld bc,256		;JFP: bc = 256/16 = 32
+        ld (ball_y), bc		;ball_y = bc
+        ld bc,0			;JFP: 0/16 = 0
+        ld (ball_xs), bc	;ball_xs = bc
+        ld bc,0			;JFP: bc = -32/16 = -2
+        ld (ball_ys), bc	;ball_ys = bc
+        ld b,3        		;\_ let ion generate a
+        call ionRandom          ;/  random number between 0 and 2
+        sla a                   ;\
+        sla a                   ; \
+        sla a                   ;  >- b=b*32
+        sla a                   ; /
+        sla a                   ;/
+        ld d,0			;\_ de=b
+        ld e,a                  ;/
+        ld hl,left_score_text	;\
+        add hl,de               ; >- text_pointer=right_scor_text+rndint(0,2)*32
+        ld (text_pointer),hl    ;/
+        call draw_text		;Draw text
+_next_key_2:
+        bcall(_GetCSC)		;\
+        cp 0			; >- wait for keypress
+	jr z,_next_key_2	;/
+	ret                     ;endif
+
+
+pause_game:
+        call draw_bg		;Draw background
+        call draw_players	;Draw players
+        call draw_ball		;Draw ball
+        call draw_net		;Draw net
+        call draw_bars		;Draw bars
+	ld b,100
+_pause_1:
+	push bc
+        call ionFastCopy	;Display screen (just a slow command)
+        pop bc
+        djnz _pause_1
+        ret
+
+win_game_left:
+        ld hl,left_win_text	;\_ text_pointer=left_win_text
+        ld (text_pointer),hl    ;/
+        call pause_game		;Pause game
+        call draw_text		;Draw text
+	jr _another_key_3	;goto _another_key_3
+win_game_right:
+        ld hl,right_win_text	;\_ text_pointer=left_win_text
+        ld (text_pointer),hl    ;/
+        call pause_game		;Pause game
+        call draw_text		;Draw text
+_another_key_3:
+        bcall(_GetCSC)		;wait for keypress
+        cp $36			;compare with [2nd]
+        jr nz,_no_restart	;if pressed then
+        ld a,(game_flags)	;\
+        set 1,a                 ; >- set restart flag
+        ld (game_flags),a	;/
+        ret
+_no_restart:                    ;endif
+        cp $37			;compare with [mode]
+        jr nz,_no_exit		;if pressed then
+        ld a,(game_flags)	;\
+        set 0,a                 ; >- set exit flag
+        ld (game_flags),a	;/
+        ret
+_no_exit:                       ;endif
+	jr _another_key_3       ;loop until [mode] or [2nd] is pressed
+
+
+control_right:
+        ld a,(right_type)       ;.
+        cp 10                   ;if right_type = 10 then
+        jp z,move_right         ;  move right player with (left),(right),(up) numpad.
+        cp 20                   ;if right_type = 20 then
+        jp z,ai_right           ;  move right player with artificial intelligense.
+	ret			;actually, this should generate an error...
+
+control_left:
+        ld a,(left_type)	;.
+        cp 10                   ;if left_type = 10 then
+        jp z,move_left		;  move left player with (1),(3),(5) numpad.
+	ret			;actually, this should generate an error too.
+
+ai_right:
+	JFP_TO_INT(ball_x)      ;bc=ball_x
+	ld a,c                  ;a=c
+	cp 52                   ;compare a with 52
+	jr c,_ai_no_jump       	;if a >= 52 then
+	JFP_TO_INT(right_y)     ;  bc=int(right_y)
+	ld a,c                  ;  a=c
+        cp 48                   ;  compare with 48
+        jp nz,_ai_no_jump       ;  if a = 48 then
+	ld hl,-20               ;    hl=-20       \_ jump
+	ld (right_ys),hl	;    right_ys=hl  /
+				;  endif
+_ai_no_jump:                    ;endif
+        ld hl,(right_y)         ;hl=right_y
+        ld de,(right_ys)        ;de=right_ys
+        add hl,de               ;hl=hl+de
+        ld (right_y),hl         ;right_y=de
+        JFP_TO_INT(right_y)     ;bc=int(right_y)
+        ld b,a                  ;store a in b
+        ld a,c                  ;.
+        cp 48                   ;..
+        ld a,b                  ;retrieve a from b
+        jr nc,_ai_no_grav       ;if int(right_y) < 48 then
+        ld hl,(right_ys)        ;  hl=right_ys
+        inc hl                  ;  hl=hl+1
+        ld (right_ys),hl        ;  right_ys=hl
+        jr _ai_m_left           ;else
+_ai_no_grav:                    ;  .
+	ld hl,0                 ;  ..
+        ld (right_ys),hl        ;  right_ys=0
+        ld hl,768               ;  right_y=768
+        ld (right_y),hl         ;  (which is 48.0 in jfp)
+_ai_m_left:			;  .
+        JFP_TO_INT(ball_x)      ;bc=ball_x
+        ld a,c                  ;a=c
+        JFP_TO_INT(right_x)	;bc=right_x
+        cp c                    ;compare with c
+        jr nc,_ai_m_right	;if a < c then
+	ld a,c			;  a=c
+	cp 51                   ;  compare with 51
+	jr c,_ai_m_right	;  if a >= 51 then
+	ld b,9                  ;    b=9           \
+	call ionRandom          ;    a=rndint(0,8)  \
+	add a,7                 ;    a=7             \
+	ld d,0                  ;    d=0              \_ right_x=right_x-rndint(8,16)
+	ld e,a                  ;    e=a              /  (= -0.5 and -1.1 in jfp)
+	ld hl,(right_x)         ;    hl=right_x      /
+	sbc hl,de               ;    hl=hl-de       /
+	ld (right_x),hl		;    right_x=hl    /
+	ret			;  endif
+_ai_m_right:                    ;else
+	ld a,c			;  a=c
+	cp 80                   ;  compare with 80
+	ret nc			;  if a < 80 then
+	ld b,8                  ;    b=8           \
+	call ionRandom          ;    a=rndint(0,7)  \
+	add a,7                 ;    a=7             \
+	ld d,0                  ;    d=0              \_ right_x=right_x+rndint(7,15)
+	ld e,a                  ;    e=a              /  (= 0.5 and 0.9 in jfp)
+	ld hl,(right_x)         ;    hl=right_x      /
+	add hl,de               ;    hl=hl-de       /
+	ld (right_x),hl		;    right_x=hl    /
+	ret			;  endif
+				;endif
+
+
+move_right:                 	;d:\ticalc\tutor\ti83asm\day20.html
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11111110		;a=arrow keys
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 1,a			;bit 1 = left arrow key
+        jr nz,_no_left_1	;if pressed then
+        JFP_TO_INT(right_x)     ;  bc=int(right_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 51                   ;  /  with 51
+        ld a,b			;  retrieve a from b
+        jr c,_no_left_1         ;  if a >= 51 then
+        ld hl,(right_x)		;    hl=right_x \
+        ld de,8                 ;    de=0        \_ right_x = right_x - 16
+        sbc hl,de               ;    hl=hl-8     /  (which is 0.5 in jfp)
+        ld (right_x),hl		;    right_x=hl /
+        			;  endif
+_no_left_1:                     ;endif
+	bit 2,a			;bit 2 = right arrow key
+        jr nz,_no_right_1	;if pressed then
+        JFP_TO_INT(right_x)     ;  bc=int(right_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 80                   ;  /  with 80
+        ld a,b			;  retrieve a from b
+        jr nc,_no_right_1	;  if a < 80 then
+        ld hl,(right_x)		;    hl=right_x  \
+        ld de,8                 ;    de=8         \_ right_x = right_x + 8
+        add hl,de               ;    hl=hl+8      /  (which is 0.5 in jfp)
+        ld (right_x),hl		;    right_x=hl  /
+        			;  endif
+_no_right_1:                    ;endif
+	bit 3,a			;bit 3 = up arrow key
+        jr nz,_no_up_1		;if pressed then
+        JFP_TO_INT(right_y)     ;  convert right_y to integer
+        ld b,a			;  store a in b
+        ld a,c			;  .
+        cp 48                   ;  ..
+        ld a,b			;  retrieve a from b
+        jr c,_no_up_1           ;  if int(right_y) >= 48 then
+        ld hl,-20               ;    hl=-20       \_ right_ys = -20
+        ld (right_ys),hl	;    right_ys=hl  /  (which is -1.25 in jfp)
+        ld hl,752               ;    hl=752       \_ right_y = 752
+        ld (right_y),hl         ;    right_y=hl   /  (which is 47.0 in jfp)
+        			;  endif
+_no_up_1:			;endif
+        ld hl,(right_y)         ;hl=right_y
+        ld de,(right_ys)        ;de=right_ys
+        add hl,de               ;hl=hl+de
+        ld (right_y),hl         ;right_y=de
+        JFP_TO_INT(right_y)     ;bc=int(right_y)
+        ld b,a                  ;store a in b
+        ld a,c                  ;.
+        cp 48                   ;..
+        ld a,b                  ;retrieve a from b
+        jr nc,_no_grav_1        ;if int(right_y) < 48 then
+        ld hl,(right_ys)        ;  hl=right_ys
+        inc hl                  ;  hl=hl+1
+        ld (right_ys),hl        ;  right_ys=hl
+        jr _grav_1              ;else
+_no_grav_1:                     ;  .
+	ld hl,0                 ;  ..
+        ld (right_ys),hl        ;  right_ys=0
+        ld hl,768               ;  right_y=768
+        ld (right_y),hl         ;  (which is 48.0 in jfp)
+_grav_1:                        ;endif
+        ret
+
+
+move_left:                 	;d:\ticalc\tutor\ti83asm\day20.html
+	ld a,(right_type)       ;a=right_type
+	cp 20                   ;compare with 20
+	jp z,_move_left_a	;if right_type=20 then goto _move_left_a
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11101111		;a=group with 1
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 1,a			;bit 1 = 2
+        jr nz,_no_left_2	;if pressed then
+        JFP_TO_INT(left_x)     	;  bc=int(left_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 1+left_xc            ;  /  with 1 + stupid bug correction
+        ld a,b			;  retrieve a from b
+        jr c,_no_left_2         ;  if a >= 1 then
+        ld hl,(left_x)		;    hl=left_x \
+        ld de,8                 ;    de=0        \_ left_x = left_x - 16
+        sbc hl,de               ;    hl=hl-8     /  (which is 0.5 in jfp)
+        ld (left_x),hl		;    left_x=hl /
+        			;  endif
+_no_left_2:                     ;endif
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11111011		;a=group with 3
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 1,a			;bit 1 = 3
+        jr nz,_no_right_2	;if pressed then
+        JFP_TO_INT(left_x)     	;  bc=int(left_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 30+left_xc           ;  /  with 30+stupid bug correction
+        ld a,b			;  retrieve a from b
+        jr nc,_no_right_2	;  if a < 30 then
+        ld hl,(left_x)		;    hl=left_x  \
+        ld de,8                 ;    de=8         \_ left_x = left_x + 8
+        add hl,de               ;    hl=hl+8      /  (which is 0.5 in jfp)
+        ld (left_x),hl		;    left_x=hl  /
+        			;  endif
+_no_right_2:                    ;endif
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11110111		;a=group with 5
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 2,a			;bit 2 = 5
+        jr nz,_no_up_2		;if pressed then
+        JFP_TO_INT(left_y)     	;  convert left_y to integer
+        ld b,a			;  store a in b
+        ld a,c			;  .
+        cp 48                   ;  ..
+        ld a,b			;  retrieve a from b
+        jr c,_no_up_2           ;  if int(left_y) >= 48 then
+        ld hl,-20               ;    hl=-20       \_ left_ys = -20
+        ld (left_ys),hl		;    left_ys=hl  /  (which is -1.25 in jfp)
+        ld hl,752               ;    hl=752       \_ left_y = 752
+        ld (left_y),hl         	;    left_y=hl   /  (which is 47.0 in jfp)
+        			;  endif
+_no_up_2:			;endif
+        ld hl,(left_y)         	;hl=left_y
+        ld de,(left_ys)        	;de=left_ys
+        add hl,de               ;hl=hl+de
+        ld (left_y),hl         	;left_y=de
+        JFP_TO_INT(left_y)     	;bc=int(left_y)
+        ld b,a                  ;store a in b
+        ld a,c                  ;.
+        cp 48                   ;..
+        ld a,b                  ;retrieve a from b
+        jr nc,_no_grav_2        ;if int(left_y) < 48 then
+        ld hl,(left_ys)        	;  hl=left_ys
+        inc hl                  ;  hl=hl+1
+        ld (left_ys),hl        	;  left_ys=hl
+        jr _grav_2              ;else
+_no_grav_2:                     ;  .
+	ld hl,0                 ;  ..
+        ld (left_ys),hl        	;  left_ys=0
+        ld hl,768               ;  left_y=768
+        ld (left_y),hl         	;  (which is 48.0 in jfp)
+_grav_2:                        ;endif
+        ret
+_move_left_a:
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11111110		;a=group with 1
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 1,a			;bit 1 = left arrow key
+        jr nz,_no_left_3	;if pressed then
+        JFP_TO_INT(left_x)     	;  bc=int(left_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 1+left_xc            ;  /  with 1 + stupid bug correction
+        ld a,b			;  retrieve a from b
+        jr c,_no_left_3         ;  if a >= 1 then
+        ld hl,(left_x)		;    hl=left_x \
+        ld de,8                 ;    de=0        \_ left_x = left_x - 16
+        sbc hl,de               ;    hl=hl-8     /  (which is 0.5 in jfp)
+        ld (left_x),hl		;    left_x=hl /
+        			;  endif
+_no_left_3:                     ;endif
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11111110		;a=group with 3
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 2,a			;bit 2 = right arrow key
+        jr nz,_no_right_3	;if pressed then
+        JFP_TO_INT(left_x)     	;  bc=int(left_x)
+        ld b,a			;  store a in b
+        ld a,c			;  \_ compare a
+        cp 30+left_xc           ;  /  with 30+stupid bug correction
+        ld a,b			;  retrieve a from b
+        jr nc,_no_right_3	;  if a < 30 then
+        ld hl,(left_x)		;    hl=left_x  \
+        ld de,8                 ;    de=8         \_ left_x = left_x + 8
+        add hl,de               ;    hl=hl+8      /  (which is 0.5 in jfp)
+        ld (left_x),hl		;    left_x=hl  /
+        			;  endif
+_no_right_3:                    ;endif
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+	ld a,%11111110		;a=group with 5
+	out (1),a		;set key group
+        in a,(1)		;get state of the group
+	bit 3,a			;bit 3 = up arrow key
+        jp nz,_no_up_2		;if pressed then
+        JFP_TO_INT(left_y)     	;  convert left_y to integer
+        ld b,a			;  store a in b
+        ld a,c			;  .
+        cp 48                   ;  ..
+        ld a,b			;  retrieve a from b
+        jp c,_no_up_2           ;  if int(left_y) >= 48 then
+        ld hl,-20               ;    hl=-20       \_ left_ys = -20
+        ld (left_ys),hl		;    left_ys=hl  /  (which is -1.25 in jfp)
+        ld hl,752               ;    hl=752       \_ left_y = 752
+        ld (left_y),hl         	;    left_y=hl   /  (which is 47.0 in jfp)
+        jp _no_up_2		;  endif
+        			;go back and do the rest of move_left
+
+
+move_ball:
+        ld hl,(ball_y)         	;hl=ball_y  \
+        ld de,(ball_ys)        	;de=ball_ys  \_ ball_y=ball_y+ball_ys
+        add hl,de               ;hl=hl+de    /
+        ld (ball_y),hl         	;ball_y=de  /
+        ld hl,(ball_ys)        	;hl=ball_ys \
+        inc hl                  ;ball_ys+=1  >- put gravity on ball
+        ld (ball_ys),hl		;ball_ys=hl /
+        ld hl,(ball_x)         	;hl=ball_x  \
+        ld de,(ball_xs)        	;de=ball_xs  \_ ball_x=ball_x+ball_xs
+        add hl,de               ;hl=hl+de    /
+        ld (ball_x),hl         	;ball_x=de  /
+        JFP_TO_INT(ball_y)      ;bc=int(ball_y)
+        ld a,c                  ;a=c
+        cp 51                   ;compare with 51
+        call nc,score_point     ;if ball_y > 51 then call score_point
+        JFP_TO_INT(ball_y)      ;bc=int(ball_y)
+        ld a,c                  ;a=c
+        cp 2                   	;compare with 2
+        jr nc,_under_roof	;if ball_y < 2 then
+        call _swap_ys        	;ball_ys=-ball_ys
+        ld hl,128		;hl=128 (=8.0 in jfp)
+        ld (ball_y),hl		;ball_y=hl
+_under_roof:			;endif
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        cp 91                   ;compare with 91
+        jr c,_no_col_right      ;if a > 91 then
+        call _swap_xs        	;  ball_xs=-ball_xs
+        ld hl,91*16		;  hl=91*16
+        ld (ball_x),hl          ;  ball_x=hl
+_no_col_right:                  ;endif
+        cp 1                   	;compare with 1
+        jr nc,_no_col_left      ;if a < 1 then
+        call _swap_xs        	;  ball_xs=-ball_xs
+        ld hl,1*16		;  hl=1*16
+        ld (ball_x),hl          ;  ball_x=hl
+_no_col_left:                  ;endif
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        cp 41                   ;compare with 41
+        jr c,_no_net_col	;if a > 40 then
+        cp 50                   ;  compare with 50
+        jr nc,_no_net_col	;  if a <= 50 then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_x)
+        ld a,c                  ;    a=c
+        cp 40                   ;    compare with 41
+        jr c,_no_net_h_col	;    if a > 40 then
+        call _swap_xs  		;      call _swap_xs
+        jr _no_net_col          ;      .
+_no_net_h_col:			;      ..
+	cp 38			;      ...
+	call nc,_swap_ys	;    elseif a >= 38 then call swap_ys
+				;  endif
+_no_net_col:			;endif
+	call left_col_1		;check for collidebox 1
+	ld a,(game_flags)       ;.
+	bit 3,a                 ;..
+	call nz,left_col_2	;if temp bit is set then check for collidebox 2
+	ld a,(game_flags)       ;.
+	bit 3,a                 ;..
+	call nz,left_col_3	;if temp bit is set then check for collidebox 3
+	call right_col_1	;check for collidebox 1
+	ld a,(game_flags)       ;.
+	bit 3,a                 ;..
+	call nz,right_col_2	;if temp bit is set then check for collidebox 2
+	ld a,(game_flags)       ;.
+	bit 3,a                 ;..
+	call nz,right_col_3	;if temp bit is set then check for collidebox 3
+        ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h			;is hl negative?
+        ret nz                  ;if hl < 0 then return
+        sra h                   ;\_ sra hl                \
+        rr l                    ;/  (integer divide by 2)  \
+        sra h                   ;\_ sra hl                  \
+        rr l                    ;/  (integer divide by 2)    \_ integer divide
+        sra h                   ;\_ sra hl                   /  by sixteen
+        rr l                    ;/  (integer divide by 2)   /
+        sra h                   ;\_ sra hl                 /
+        rr l                    ;/  (integer divide by 2) /
+        ld a,l			;a=l
+        cp 2			;compare with 2
+        ret c			;if a > 2 then
+        ld hl,32        	;  hl=32 (=2.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret                     ;endif
+_swap_ys:                       ;
+	ld de,(ball_ys)         ;de=ball_ys  \
+	ld hl,0                 ;hl=0         \
+	or a			;clear flags   >- ball_ys=-ball_ys
+        sbc hl,de               ;hl=hl-de     /
+        ld (ball_ys),hl         ;ball_ys=hl  /
+	ret                     ;
+_swap_xs:                       ;
+	ld de,(ball_xs)         ;de=ball_xs  \
+	ld hl,0                 ;hl=0         \
+	or a			;clear flags   >- ball_xs=-ball_xs
+        sbc hl,de               ;hl=hl-de     /
+        ld (ball_xs),hl         ;ball_xs=hl  /
+	ret
+
+
+left_col_1:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        add a,left_xc		;add stupid bug correction
+        JFP_TO_INT(left_x)	;bc=int(left_x)
+        add a,5-8		;a=a+5-8
+        cp c			;compare with c, which is int(left_x)
+        ret c			;if a > c then
+        add a,-5-1	        ;  a=a-5-1 (so it's -8-1)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(left_y)	;    bc=int(left_y)
+        add a,5                 ;    a=a+5
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-5-8		;      a=a-5-8 (so it's -8)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,(left_y)          ;hl=left_y   \
+        ld de,-80		;de=-80       \_ ball_y=left_y-80
+	add hl,de		;hl=hl+de     /  (=-5.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(left_ys)         ;de=left_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(left_ys)	;bc=int(left_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a <= -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+left_col_2:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        add a,left_xc		;add stupid bug correction
+        JFP_TO_INT(left_x)	;bc=int(left_x)
+        add a,5-1		;a=a+5-1
+        cp c			;compare with c, which is int(left_x)
+        ret c			;if a > c then
+        add a,-5-6	        ;  a=a-5-6 (so it's -7)    (right bound should be-15)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(left_y)	;    bc=int(left_y)
+        add a,5-4               ;    a=a+5-4
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-5-4		;      a=a-5-4 (so it's -8)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,-16               ;
+        ld (ball_xs),hl         ;
+        ld hl,(left_y)          ;hl=left_y   \
+        ld de,-16		;de=-16       \_ ball_y=left_y-16
+	add hl,de		;hl=hl+de     /  (=-1.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(left_ys)         ;de=left_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(left_ys)	;bc=int(left_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a > -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+left_col_3:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        add a,left_xc		;add stupid bug correction
+        JFP_TO_INT(left_x)	;bc=int(left_x)
+        add a,5-8		;a=a+5-8
+        cp c			;compare with c, which is int(left_x)
+        ret c			;if a > c then
+        add a,-5-7	        ;  a=a-5-7 (so it's -15)    (right bound should be-15)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(left_y)	;    bc=int(left_y)
+        add a,5-4               ;    a=a+5-4
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-5-5		;      a=a-5-4 (so it's -9)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,16                ;
+        ld (ball_xs),hl         ;
+        ld hl,(left_y)          ;hl=left_y   \
+        ld de,-16		;de=-16       \_ ball_y=left_y-16
+	add hl,de		;hl=hl+de     /  (=-1.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(left_ys)         ;de=left_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(left_ys)	;bc=int(left_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a > -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+right_col_1:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        JFP_TO_INT(right_x)	;bc=int(right_x)
+        add a,5-8		;a=a+5-8
+        cp c			;compare with c, which is int(right_x)
+        ret c			;if a > c then
+        add a,-5-1	        ;  a=a-5-1 (so it's -8-1)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(right_y)	;    bc=int(right_y)
+        add a,5                 ;    a=a+5
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-8-5		;      a=a-8-5 (so it's -8)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,(right_y)         ;hl=right_y  \
+        ld de,-80		;de=-80       \_ ball_y=right_y-80
+	add hl,de		;hl=hl+de     /  (=-5.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(right_ys)        ;de=right_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(right_ys)	;bc=int(right_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a > -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+right_col_2:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        JFP_TO_INT(right_x)	;bc=int(right_x)
+        add a,5-1		;a=a+5-1
+        cp c			;compare with c, which is int(right_x)
+        ret c			;if a > c then
+        add a,-5-6	        ;  a=a-5-6 (so it's -7)    (right bound should be-15)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(right_y)	;    bc=int(right_y)
+        add a,5-4               ;    a=a+5-4
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-5-4		;      a=a-5-4 (so it's -8)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,-16
+        ld (ball_xs),hl
+        ld hl,(right_y)         ;hl=right_y  \
+        ld de,-16		;de=-16       \_ ball_y=right_y-16
+	add hl,de		;hl=hl+de     /  (=-1.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(right_ys)        ;de=right_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(right_ys)	;bc=int(right_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a > -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+right_col_3:
+	ld a,(game_flags)	;\
+	set 3,a                 ; >- do check for other collides for this player
+	ld (game_flags),a       ;/
+	ld hl,(ball_ys)         ;hl=ball_ys
+        bit 7,h                 ;is h negative?
+        ret nz			;if h is negative then exit sub
+        JFP_TO_INT(ball_x)      ;bc=int(ball_x)
+        ld a,c                  ;a=c
+        JFP_TO_INT(right_x)	;bc=int(right_x)
+        add a,5-8		;a=a+5-8
+        cp c			;compare with c, which is int(right_x)
+        ret c			;if a > c then
+        add a,-5-7	        ;  a=a-5-7 (so it's -15)    (right bound should be-15)
+        cp c                    ;  compare with c
+        ret nc			;  if a <= c then
+        JFP_TO_INT(ball_y)      ;    bc=int(ball_y)
+        ld a,c                  ;    a=c
+        JFP_TO_INT(right_y)	;    bc=int(right_y)
+        add a,5-4               ;    a=a+5-4
+        cp c                    ;    compare with c
+        ret c			;    if a > c then
+        add a,-5-4		;      a=a-5-4 (so it's -8)
+        cp c                    ;      compare with c
+        ret nc			;      if a <= c then
+        call _swap_ys		;        call _swap_ys
+        ld hl,16
+        ld (ball_xs),hl
+        ld hl,(right_y)         ;hl=right_y  \
+        ld de,-16		;de=-16       \_ ball_y=right_y-16
+	add hl,de		;hl=hl+de     /  (=-1.0 in jfp)
+        ld (ball_y),hl          ;ball_y=hl   /
+        ld hl,(ball_ys)         ;hl=ball_ys
+        ld de,(right_ys)        ;de=right_ys
+        bit 7,h                 ;is h posictive?
+        ret z			;if h >= 0 then return
+        sra d                   ;\_ sra de
+        rr e                    ;/  (integer divide by 2)
+        add hl,de               ;hl=hl+de
+        ld (ball_ys),hl         ;ball_y=hl
+      	ld a,(game_flags)	;\
+	res 3,a                 ; >- don't check for other collides for this player
+	ld (game_flags),a       ;/
+        JFP_TO_INT(right_ys)	;bc=int(right_ys)
+        ld a,c			;a=c
+        cp -1			;compare with -1
+        ret nc			;if a > -1 then
+        ld hl,-16        	;  hl=-16 (=-1.0 in jfp)
+        ld (ball_ys),hl         ;  ball_ys=hl
+        ret			;endif
+
+
+clear_keys:
+	ld a,%11111111		;a=clear key port
+	out (1),a		;port 1 is the keypad
+        ret
+
+
+
+;==========================================================
+;	Data
+;==========================================================
+;	Remember that it stores the least significant byte
+;	first, and therefore I had to swap the first and
+;	the last bytes (8 bits) to make the ionLargeSprite
+;	procedure display it right.
+;==========================================================
+;       control_sprite  32,10   [2nd]=human [ALPHA]=ai
+;	left_sprite	16,8	left player
+;	right_sprite	16,8	right player
+;	wall_sprite	8,12	wolleyball net
+;	ball_sprite	8,46	the ball
+;==========================================================
+;	start_text        	welcome text
+;	left_score_text  	text to display when a
+;	and right_score_text	player scores
+;	left_fumble_text  	text to display when a
+;	and right_fumble_text	player can't serve
+;	left_win_text  		text to display when a
+;	and right_win_text	player wins the match
+;==========================================================
+left_sprite:
+	.dw	%1100000000000011
+	.dw	%1111000000001111
+	.dw	%1101100000011111
+	.dw	%1000110000111111
+	.dw	%1101111001111111
+	.dw	%0000001001111111
+	.dw	%1111111111111111
+	.dw	%1111111111111111
+right_sprite:
+	.dw	%1100000000000011
+	.dw	%1111000000001111
+	.dw	%1111100000011011
+	.dw	%1111110000110001
+	.dw	%1111111001111011
+	.dw	%1111111001000000
+	.dw	%1111111111111111
+	.dw	%1111111111111111
+wall_sprite:
+	.db	%11110000
+	.db	%11010000
+	.db	%10100000
+	.db	%01010000
+	.db	%10100000
+	.db	%01010000
+	.db	%10100000
+	.db	%01010000
+	.db	%10100000
+	.db	%01010000
+	.db	%10100000
+	.db	%11010000
+ball_sprite:
+	.db	%01110000
+	.db	%11101000
+	.db	%11111000
+	.db	%11111000
+	.db	%01110000
+control_sprite:
+	.db	%11001001,%11000001,%00100110,%01010010
+	.db	%00101101,%00100010,%10100101,%01010101
+	.db	%01001011,%00100011,%10100110,%01110111
+	.db	%11101001,%11000010,%10110100,%01010101
+	.db	%00000110,%00000000,%00001111,%10000000
+	.db	%00001111,%00000000,%00011000,%11000000
+	.db	%00000110,%00000000,%00011000,%11000000
+	.db	%00011111,%10000000,%00011111,%11000000
+	.db	%00000110,%00000000,%00000111,%00000000
+	.db	%00011001,%10000000,%00001111,%10000000
+
+start_text:
+	.db	"Press 2nd or ALPHA...          " \ .db 0
+left_score_text:
+        .db	"Walter scores!                 " \ .db 0
+        .db	"Beautiful smash!               " \ .db 0
+        .db	"Cannonball!                    " \ .db 0
+left_fumble_text:
+;	.db	"Flot fumlet Walter!            " \ .db 0
+;	.db	"og bolden er Gordons           " \ .db 0
+left_win_text:
+        .db	"Walter wins the game!  (2nd)   " \ .db 0
+right_score_text:
+        .db	"Walter misses the ball!        " \ .db 0
+        .db	"Incredible scored!             " \ .db 0
+        .db	"Wonderful smash!               " \ .db 0
+right_fumble_text:
+;	.db	"Gordon taber bolden            " \ .db 0
+;	.db	"Elendig serve!                 " \ .db 0
+right_win_text:
+        .db	"Gordon wins again!  (2nd)      " \ .db 0
+
+
+;==========================================================
+;	End of program
+;==========================================================
+end_of_program:
+.end		; End.
+END             ; End for god sake!

@@ -1,0 +1,354 @@
+0.5.1 ***(March 27, 2011)***
+    * New getkey for grabbing key combinations.
+    * Compile menu tell you the shell settings to avoid accidental compiles.
+    * DispGraph is now significantly faster.
+    * New command to check string equality.
+    * Lots of new optimizations (Thanks again to Runer112!)
+    * Fixed Axiom system when reading commands with single r modifiers.
+    * Fixed MemKit axiom bugs.
+    * Corrected typo in help menu.
+    * not() can be used in expressions.
+    * Fixed Ptr->DispGraph bug.
+
+0.5.0 ***(February 12, 2011)***
+    * Axioms finally fully functional!
+    * Example axiom included.
+    * "While 1" and "Repeat 0" automatically optimize to "Do" loops.
+    * New "EndIf" and "End!If" statements for post-testing in loops.
+    * Help menu actually shows something now!
+    * Fixed sprite rotation commands.
+    * Fixed nibble reading commands.
+
+0.4.8 ***(January 9, 2011)***
+    * A few more optimizations
+    * Multi-line comments!
+    * Axiom SDK updated and probably finalized
+    * Fixed 3 Level grayscale routine hopefully
+    * Fixed reading protected programs from archive
+    * Fixed application size field
+    * Line drawing off-screen does not draw the line.
+    * A few other minor bug fixes.
+
+0.4.7 ***(December 26, 2010)***
+    * Lots of new auto optimizations to reduce code size
+    * Values can be stored to pointers in reverse order (big endian)
+    * Display numbers in hexadecimal
+    * Draw lines to the back buffer
+    * New "Display & Clear" routine to do both simultaneously
+    * Bitwise complement command for 8 and 16 bit numbers
+    * Reallocate variables anywhere in the program!
+    * Custom icon support when compiling for shells!
+    * getkey() can now take a variable as an argument!
+    * Fixed bug when leaving parenthesis off inline data
+    * Fixed the input command.  It should never display garbage anymore
+    * New, faster line drawing routine
+    * File pointers can now be dereferenced
+    * The L1 buffer has changed position and is now 2 bytes larger
+    * The variables are now located after the end of the L1 buffer by default
+
+0.4.6 ***(November 28, 2010)***
+    * Direct key support for the [On] key using getKey(41)
+    * Added new Axiom Tokens (but they aren't usable yet)
+    * Static data can be stored to variable pointer
+    * Pressing alpha-character jumps to program in compile menu
+    * Selector wraps around in the compile menu
+    * Fixed bug that made some invalid syntax become comments
+    * Fixed Elseif bug
+    * Added new auto-optimizations
+    * Automatic backups only after finishing compile with no errors
+    * Compiling to apps always attempts a defragmentation
+    * App signature improved and resignable on-calc with external program
+    * Fixed program menu bug after manual backups
+    * Manual backup key is now "Alpha"
+    * Fixed sector boundary reading bug when reading large source from archive.
+
+0.4.5 ***(September 27, 2010)***
+    * Direct Nibble manipulation!
+    * Subroutines can save and restore argument variables (for recursive uses).
+    * Most Axe variables can be dereferenced.
+    * Correct number of Ends after nested elseif statements
+    * White space in program is handled better when scrolling to an error.
+    * Axioms are temporarily disabled.
+    * Fixed Auto Power Down bug.
+    * getkey() routines alway delay long enough to register a key even in 15MHz.
+    * DispGraphrr can be used in an interrupt routine now.
+    * Optimized Copy() Fill() and Exch() commands.
+
+0.4.4 ***(August 20, 2010)***
+    * Convert integers to and from floating point numbers.
+    * String input just like BASIC!
+    * ElseIf and Else!If statements.
+    * Data search routine similar to BASIC's inString.
+    * Fixed bug with custom interrupt labels.
+
+0.4.3 ***(August 10, 2010)***
+    * Screen-shift the back buffer in any direction.
+    * Bit checking for 16-bit numbers.
+    * New auto-opts for bit checking.
+    * Missing label displayed when receiving a missing label error.
+    * Fixed bug that was randomly crashing the parser.
+    * Fixed end of file bug with external program names.
+    * Parser always resets the window top to the correct position.
+
+0.4.2 ***(August 8, 2010)***
+    * Create Axe Backup files automatically to preserve source code during ram clears!
+    * Manually manage your backups in the compile menu.
+    * Include external source code directly into your main source code!
+    * Basic sprite rotation and flipping!
+    * Automatic Calc-To-Calc linking with the I/O cable!
+    * Static pointers and label names can now be up to 3 letter/numbers!
+    * Many new auto-optimizations.
+    * Faster division routine (but also slightly larger).
+    * [2nd] and [Mode] now also work in the GUI like [Enter] and [Clear] respectively.
+    * Fixed bug that would randomly make the high-nibble of long hex numbers 0.
+    * Fixed progress bar looping when compiling from large programs in rom.
+    * Fixed division bug with constants close to 255.
+    * Compatible with Mac TI-Connect.
+    * Return optimization in no longer automatic due to possible program leaks.
+
+0.4.1 ***(July 28, 2010)***
+    * New masked sprite drawing routine for 3 level grayscale.
+    * Main sprite drawing routines can be drawn to any specified buffer.
+    * Fixed bug with file pointers.
+    * Fixed small bug in defragmenting and app compiling.
+
+0.4.0 ***(July 25, 2010)***
+    * Almost every external variable can now be fully used in Axe.
+    * Read external variables directly from flash.
+    * Delete external variables.
+    * Updated documentation for external variable usage.
+    * White space is completely white now, its ignored almost everywhere.
+    * Text commands have improved greatly.
+    * Temporary pointers allow any data to be defined and used immediately in any command.
+    * Direct I/O control of the link port.
+    * Error messages are more descriptive.
+    * Size of the program is displayed when compiling to an application.
+    * Slightly improved application compiling.
+    * New optimizations to reduce the size of nearly every program.
+    * Read from pointers in reverse (big endian).
+    * Change log included with the parser.
+    * Fixed end of program bug.
+    * Text command syntax has changed to look exactly like the output and display syntax.
+
+0.3.3 ***(July 10, 2010)***
+    * Draw rectangles and boxes.
+    * Draw circles.
+    * Interrupts are now compatible with applications.
+    * 2 New advanced multiplication techniques: Fixed Point and High Order.
+    * "Return" at the end of the program is automatically optimized.
+    * Error scrolling is more accurate.
+    * Simple application signing included.
+    * Import Pictures from archive.
+    * Support for full screen pictures.
+    * Freq() can now play lower notes, and only the tone "0" has changed.
+    * Fixed some issues with negative numbers.
+    * Fixed the Data() command.  All numbers should work with it now.
+    * Pixel drawing far off screen is safe now!
+
+0.3.2 ***(July 01, 2010)***
+    * Compile your programs to applications!
+    * Axioms can be imported for added functionality!
+    * Custom interrupt support!
+    * Display Tokens.
+    * New token value constants.
+    * Find the length of a zero terminated data block.
+    * Display small text without defining coordinates first.
+    * Sound quality has drastically improved.
+    * Developer information included.
+    * Fixed more bugs with negative numbers (I hate those things!)
+    * Error scrolling is much cleaner, but still messes up in gigantic programs
+
+0.3.1 ***(June 19, 2010)***
+    * Real error scrolling just like BASIC!  Finally!
+    * The new token names are now automatic.  They turn on if the program has an Axe Header
+    * Axe does not re-save the settings unless you make changes.  It will keep it unarchived if you want to unarchive it.
+    * Commands list shows both new and old token spellings.
+    * More nested expressions are allowed in a single statement.
+    * Fixed some bugs in the new tokens and documentation.
+
+0.3.0 ***(June 16, 2010)***
+    * Subroutines can now have arguments!
+    * New variables for subroutine arguments.
+    * Experimantal "Axe Tokens".  Toggle them with Alpha+Vars.
+    * Grayscale commands improved and save interrupt states.
+    * Base 2 logarithm and exponential.
+    * Draw arbitrary sized bitmaps to the buffer or directly to the screen
+    * Major bug fix, no more errors when reading from archive.
+    * SetupEditor is no longer needed or supported.
+    * Fixed other minor bugs.
+
+0.2.6 ***(June 01, 2010)***
+    * Instant goto when pressing [prgm] after errors.
+    * Use Sub() and Asm() inline with math operations.
+    * Sorting command added.
+    * Some very basic OS interrupt commands.
+    * Constant expressions are evaluated pre-compile time.
+    * Reading and writing to static addresses should be fully optimized now.
+    * Math and numbers are more flexible.
+    * Reading and writing to static addresses returns the value instead of the address.
+    * Fixed several bugs.
+
+0.2.5 ***(May 21, 2010)***
+    * Scroll to errors (kind of) by pressing [prgm] after an error.
+    * Read and write to the Ans variable as a number.
+    * New text mode to toggle auto-scrolling at last line.
+
+0.2.4 ***(May 16, 2010)***
+    * Draw pixels to the back buffer (grayscale)
+    * Get pixels form the back buffer
+    * Draw sprites to the back buffer (grayscale)
+    * 4 color grayscale rendering
+    * Draw ANY buffer directly to the screen without having to copy it to the main buffer
+    * Look-ahead parsing significantly reduces code size when using static pointers
+    * A couple new auto-opts for "is negative" and "is not negative" .
+    * Fixed bug with Cos( Sin( and square root as second argument
+    * Fixed bug with >Frac and >Dec when last line was a pointer.
+
+0.2.3 ***(May 10, 2010)***
+    * Clear the back-buffer
+    * Invert the back-buffer
+    * Copy data from end backwards
+    * Logical boolean operators
+    * Logical operators are separated from the previous bitwise operations.
+    * Grayscale is once again a 6MHz-only command until I resolve a compatibility issue.
+    * Exact percent should show up on errors.
+
+0.2.2 ***(May 04, 2010)***
+    * Min and Max operations
+    * Display numbers and ASCII characters anywhere
+    * Binary Numbers
+    * Import Pics as tile maps
+    * Huge update to auto-opts list
+    * Fixed A LOT of bugs.
+    * Programs should be smaller due to auto-opts.
+
+0.2.1 ***(April 26, 2010)***
+    * Line drawing command
+    * Counter statement
+    * Signed division
+    * Use theta as a variable
+    * Lowercase toggle built into parser
+    * Error message list added to doc
+    * Pixel drawing and line drawing are now safe.  They won't corrupt ram when drawn off screen.
+    * The free RAM in L1 has shrunk by 2 bytes (becasue theta needs those).
+    * Fixed a bugs that made some negative constants unoptimized.
+
+0.2.0 ***(April 18, 2010)***
+    * A real documentation!
+    * New user interface.
+    * Compile for shells.
+    * Contrast adjustment.
+    * Absorb "Pic" files into programs.
+    * Headers are mandatory.
+    * Only Axe Source programs show up on compile list.
+    * Fixed a few more bugs.
+
+0.1.5 ***(April 11, 2010)***
+    * Sine and cosine.
+    * Signed comparisons.
+    * Grayscale display.
+    * Programs can now be accessed just like appvars.
+    * The commands for using calc files have changes to make them easier, smaller, and faster.
+    * Fixed a couple minor bugs.
+    * A few new optimizations.
+
+0.1.4 ***(April 05, 2010)***
+    * Create Application Variables.
+    * Read and Write to Appvars.
+    * Archive and Unarchive Appvars.
+    * Fixed a bug that caused some programs to freeze.
+
+0.1.3 ***(March 21, 2010)***
+    * Cleaner command list.
+    * Name your programs with an Axe Header.
+    * Sound through the link port.
+    * Direct detect any key.
+    * Return if not command.
+    * Squares and square roots.
+    * Draw text anywhere.
+    * Small sized text mode.
+    * Inverted text mode.
+    * Draw text to buffer mode.
+    * Numerical data entry.
+    * Add empty data to program memory for extra storage.
+    * Read and write 2 byte numbers for the full 16 bits.
+    * Using int() implies that the argument is a pointer.
+    * Axe is no laughing matter now.  Default name is "AXEPROG" instead of "LOL"
+
+0.1.2 ***(March 15, 2010)***
+    * Automated data copy, exchange, and fill.
+    * Absolute value for signed numbers
+    * Sign extension for single byte signed numbers
+    * Hexadecimal constants
+    * ASCII constants
+    * Multiplication should work with signed numbers now.
+    * Comments now need to start with a period instead of a single quote.
+
+0.1.1 ***(March 10, 2010)***
+    * Parse archived programs.
+    * Lightning fast parsing speed
+    * Fixed MAJOR bug that gave random error when parsing.
+
+0.1.0 ***(March 07, 2010)***
+    * Faster Parsing
+    * Program List Is Improved
+    * 15MHz Commands
+    * Fixed the >Frac bug.
+
+0.0.6 ***(February 28, 2010)***
+    * Pointers!
+    * Double Buffering
+    * Alphabetical Listings
+    * Character Display
+    * Else Statement
+    * If-False Statement
+    * New Automatic Optimizations
+    * Sprite Editor Updated
+    * Sprites are now clipped!
+    * DispGraph is now SafeCopy instead of FastCopy
+
+0.0.5 ***(February 21, 2010)***
+    * Sprite support!
+    * Screen shifting
+    * Screen inversion
+    * Fixed unary operators
+    * Direct key input
+    * Static pointers
+    * More automatic optimizations
+    * You must add >Dec to display integers
+    * ClrHome now clears the text buffer as well
+
+0.0.4 ***(February 15, 2010)***
+    * More string character support
+    * Adding and subtracting constants optimized
+    * Pixel routines
+    * For loops
+    * Compiling progress indication
+    * Hexadecimal data entry
+    * DispGraph is now the Ion Fast Copy instead of the slower OS routine.
+
+0.0.3 ***(February 05, 2010)***
+    * String constants
+    * Multiplication, Division, and Modulo
+    * Parenthesis for Math
+    * Negative sign
+    * Output(
+    * The Fn tokens are now merged with the Diagnostic tokens
+
+0.0.2 ***(February 02, 2010)***
+    * String storage
+    * Display strings
+    * Display new line
+    * rand
+    * Don't display done
+    * Pause in milliseconds
+    
+0.0.1 ***(February 01, 2010)***
+    * Basic screen clearing and updating
+    * Run inline assembly
+    * Variables
+    * Addition, subtraction and unsigned comparisons
+    * If, While, and Repeat statements
+    * Displaying numbers
+    * And, Or, and Xor logical statemnts
+    * Basic labels and subroutines
